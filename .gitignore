@@ -1,0 +1,6 @@
+# 角色立绘、图标（CC BY-NC-SA 4.0）由 scripts/fetch-assets.sh 从上游拉取，不进仓库
+/characters/
+/assets/
+/build/
+/dist/
+.DS_Store
