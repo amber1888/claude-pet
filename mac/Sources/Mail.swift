@@ -455,6 +455,7 @@ final class MailCenter {
         return [
             "count": all.count,
             "important": all.filter(MailCenter.important).count,
+            "vipFrom": all.first(where: MailCenter.important)?.from ?? "",
             "error": watchers.contains { $0.error != nil },
             "latest": all.prefix(3).map { ["from": $0.from, "subject": $0.subject] },
         ]
