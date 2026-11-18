@@ -94,6 +94,17 @@ swift scripts/prepare-look.swift ~/Downloads/maid maid --name 女仆
 
 姿态名就是 `lines` 的键，完整列表见 `characters/claude/character.json`。
 
+## 已有的动画素材
+
+素材是带透明通道的 WebM 动画（比如 [Claude-girl](https://github.com/wangxianda941030/Claude-girl) 的 `clips/`）时不用重画，用 `scripts/video-look.sh` 直接转：写一个说明文件（格式见脚本开头，例子是 `looks/claude-girl/video.txt`）——用哪段校准大小、每张精灵图用哪几段、静态立绘取哪一帧——再跑
+
+```bash
+scripts/video-look.sh <片段目录> ~/.claudia/characters/<id> <说明文件>
+python3 scripts/look-frames.py <你的 character.json> ~/.claudia/characters/<id>/frames.json ~/.claudia/characters/<id>/character.json
+```
+
+要 `brew install ffmpeg webp`。macOS 的网页引擎播这种 WebM 会丢透明通道（人物外面一个黑框），所以一定要转。
+
 ## 授权
 
 照着 claudia 的设计画的衣服是她的衍生作品：默认形象按 CC BY-NC-SA 4.0 授权，所以新衣服也要**署名（CrossPet、claudia-pet 及原设定作者）、不得商用、按同一协议分享**。自己用不受影响。

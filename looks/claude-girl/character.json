@@ -1,0 +1,342 @@
+{
+  "skinOf": "claude",
+  "skinName": "茶会大小姐",
+  "greeting": "日安～今天也一起喝茶吧",
+  "accent": "#e8893d",
+  "longThink": {
+    "after": 25,
+    "pose": "thinklong"
+  },
+  "animations": {
+    "idle": {
+      "sheets": [
+        "待机"
+      ],
+      "loop": true
+    },
+    "listening": {
+      "sheets": [
+        "托腮思考"
+      ],
+      "loop": true
+    },
+    "thinking": {
+      "sheets": [
+        "托腮思考"
+      ],
+      "loop": true
+    },
+    "writing": {
+      "sheets": [
+        "敲小键盘"
+      ],
+      "loop": true
+    },
+    "running": {
+      "sheets": [
+        "敲小键盘"
+      ],
+      "loop": true
+    },
+    "reading": {
+      "sheets": [
+        "翻书"
+      ],
+      "loop": true
+    },
+    "searching": {
+      "sheets": [
+        "翻书"
+      ],
+      "loop": true
+    },
+    "asking": {
+      "sheets": [
+        "双手合十等你"
+      ],
+      "loop": true
+    },
+    "delegating": {
+      "sheets": [
+        "掏出行为准则"
+      ],
+      "loop": true
+    },
+    "tired": {
+      "sheets": [
+        "限额了五小时后见"
+      ],
+      "loop": true
+    },
+    "sleeping": {
+      "sheets": [
+        "限额了五小时后见"
+      ],
+      "loop": true
+    },
+    "happy": {
+      "sheets": [
+        "写好啦"
+      ],
+      "full": true
+    },
+    "proud": {
+      "sheets": [
+        "你说得完全正确"
+      ],
+      "full": true
+    },
+    "oops": {
+      "sheets": [
+        "冒汗道歉"
+      ],
+      "full": true
+    },
+    "sorry": {
+      "sheets": [
+        "冒汗道歉"
+      ],
+      "full": true
+    },
+    "surprised": {
+      "sheets": [
+        "被戳炸毛"
+      ],
+      "full": true
+    },
+    "pout": {
+      "sheets": [
+        "被戳炸毛"
+      ],
+      "full": true
+    },
+    "pat": {
+      "sheets": [
+        "被戳害羞"
+      ],
+      "full": true
+    },
+    "yawn": {
+      "sheets": [
+        "揉眼睛打哈欠"
+      ],
+      "full": true
+    },
+    "stretch": {
+      "sheets": [
+        "伸懒腰"
+      ],
+      "full": true
+    },
+    "hum": {
+      "sheets": [
+        "喝茶"
+      ],
+      "full": true
+    },
+    "bye": {
+      "sheets": [
+        "开心挥手"
+      ],
+      "full": true
+    },
+    "greet_morning": {
+      "sheets": [
+        "伸懒腰"
+      ],
+      "full": true
+    },
+    "greet_noon": {
+      "sheets": [
+        "开心挥手"
+      ],
+      "full": true
+    },
+    "greet_afternoon": {
+      "sheets": [
+        "喝茶"
+      ],
+      "full": true
+    },
+    "greet_evening": {
+      "sheets": [
+        "开心挥手"
+      ],
+      "full": true
+    },
+    "greet_night": {
+      "sheets": [
+        "揉眼睛打哈欠"
+      ],
+      "full": true
+    },
+    "teatime": {
+      "sheets": [
+        "捧茶歇一会儿"
+      ],
+      "full": true,
+      "idle": "fidget"
+    },
+    "decline": {
+      "sheets": [
+        "礼貌婉拒"
+      ],
+      "full": true,
+      "idle": "fidget"
+    },
+    "smirk": {
+      "sheets": [
+        "腹黑微笑"
+      ],
+      "full": true,
+      "idle": "claude"
+    },
+    "thinklong": {
+      "sheets": [
+        "超长思考"
+      ],
+      "loop": true
+    },
+    "quota_full": {
+      "sheets": [
+        "腹黑微笑"
+      ],
+      "full": true
+    },
+    "quota_jingle": {
+      "sheets": [
+        "喝茶"
+      ],
+      "full": true
+    },
+    "quota_count": {
+      "sheets": [
+        "捧茶歇一会儿"
+      ],
+      "full": true
+    },
+    "quota_empty": {
+      "sheets": [
+        "茶杯空了"
+      ],
+      "full": true
+    },
+    "quota_broke": {
+      "sheets": [
+        "号又没了"
+      ],
+      "full": true
+    }
+  },
+  "lines": {
+    "idle": [
+      "有不懂的可以问我哦",
+      "嗯…在想什么呢？",
+      "要不要喝口茶？",
+      "有我在呢～"
+    ],
+    "thinking": [
+      "嗯…",
+      "让我想想",
+      "整理一下思路"
+    ],
+    "writing": [
+      "在写了在写了",
+      "马上就好"
+    ],
+    "running": [
+      "在写了在写了",
+      "这一步好了，看看下一步"
+    ],
+    "asking": [
+      "可以吗？",
+      "要你确认一下哦",
+      "等你点头～"
+    ],
+    "happy": [
+      "写好啦，有点长…",
+      "做完啦",
+      "这次也很顺利呢"
+    ],
+    "proud": [
+      "你说得完全正确！"
+    ],
+    "oops": [
+      "抱、抱歉…",
+      "好像出错了…",
+      "这里卡住了"
+    ],
+    "sorry": [
+      "抱、抱歉…"
+    ],
+    "tired": [
+      "限额了，五小时后见",
+      "快见底了…"
+    ],
+    "sleeping": [
+      "……zZ"
+    ],
+    "hum": [
+      "喝口茶歇一下～"
+    ],
+    "teatime": [
+      "捧着茶歇一会儿～",
+      "今天的茶壶是满的"
+    ],
+    "decline": [
+      "这个不行哦"
+    ],
+    "smirk": [
+      "没关系的哦"
+    ],
+    "thinklong": [
+      "想、想太久了…"
+    ],
+    "delegating": [
+      "按照准则…分给你们了哦"
+    ],
+    "bye": [
+      "欢迎回来～",
+      "下次见～"
+    ],
+    "greet_morning": [
+      "早上好呀～",
+      "今天也一起加油吧"
+    ],
+    "greet_noon": [
+      "午饭吃了吗？",
+      "吃饱了再继续吧～"
+    ],
+    "greet_afternoon": [
+      "要不要喝口茶？",
+      "坐久了起来走走哦"
+    ],
+    "greet_evening": [
+      "今天辛苦啦",
+      "再忙也要休息哦"
+    ],
+    "greet_night": [
+      "这么晚了还在呀…",
+      "该睡了哦"
+    ],
+    "quota_full": [
+      "还很充裕哦～"
+    ],
+    "quota_jingle": [
+      "才喝了一点点",
+      "还多着呢，放心用"
+    ],
+    "quota_count": [
+      "茶还剩半壶",
+      "得省着点用了"
+    ],
+    "quota_empty": [
+      "茶喝完了…",
+      "快到限额了哦"
+    ],
+    "quota_broke": [
+      "号…号又没了？！",
+      "一滴都不剩了…"
+    ]
+  }
+}

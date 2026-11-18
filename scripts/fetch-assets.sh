@@ -4,6 +4,9 @@
 #   CrossPet（lokicorvus）    @ upstream/crosspet-COMMIT   ：其他形象，只取 claudia 的衣服（见下面 SKINS）
 #     原样用的直接复制；仓库里 looks/<形象>/ 有 poses.txt 的，按它从原图组装（图片原样，只是换个文件名当别的姿态用），
 #     再放上 looks/<形象>/character.json
+#   Claude-girl（wangxianda941030）@ upstream/claude-girl-COMMIT：克劳德大小姐「茶会大小姐」形象（CC BY-NC 4.0）。
+#     原素材是带透明通道的 webm 动画，按 looks/claude-girl/video.txt 用 scripts/video-look.sh 转成精灵图；
+#     要 ffmpeg 和 cwebp（brew install ffmpeg webp），没装就跳过这个形象，别的照常
 # 用法：./scripts/fetch-assets.sh [--force]   （--force 全部重新拉）
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -79,5 +82,38 @@ else
 EOF
   done
 fi
+
+# ---- 视频形象（片段是带透明通道的 webm，要转成精灵图）----
+# 每项：形象 id|仓库|记提交号的文件|片段目录|许可文件
+VIDEO_LOOKS="claude-girl|https://github.com/wangxianda941030/Claude-girl.git|upstream/claude-girl-COMMIT|clips|ASSETS_LICENSE.md"
+for entry in $VIDEO_LOOKS; do
+  IFS='|' read -r id repo commitfile clipdir license <<< "$entry"
+  if [ -f "characters/$id/character.json" ] && [ "$FORCE" != "--force" ]; then echo "${id} 已存在"; continue; fi
+  if ! command -v ffmpeg >/dev/null || ! command -v cwebp >/dev/null; then
+    echo "跳过 ${id}：要 ffmpeg 和 cwebp 把它的 webm 动画转成精灵图（brew install ffmpeg webp），装好后重跑这个脚本"
+    continue
+  fi
+  COMMIT="$(tr -d '[:space:]' < "$commitfile")"
+  mkdir "$TMP/$id"
+  fetch "$repo" "$COMMIT" "$TMP/$id" "/$clipdir/" "/$license"
+  out="$TMP/$id-out"
+  echo "转换 ${id} 的动画（要一两分钟）…"
+  ./scripts/video-look.sh "$TMP/$id/$clipdir" "$out" "looks/$id/video.txt"
+  # character.json：本项目写的设置台词，加上每张精灵图实际几帧（不满 120 帧的要写 to，不然会播到空白格）
+  python3 -I scripts/look-frames.py "looks/$id/character.json" "$out/frames.json" "$out/character.json"
+  rm "$out/frames.json"
+  cp "$TMP/$id/$license" "$out/LICENSE.md"
+  cat > "$out/SOURCE.md" <<EOF
+# $id
+
+动画来自 [克劳德大小姐 · Claude-girl](${repo%.git})（wangxianda941030）的 \`${clipdir}/\`，提交 \`${COMMIT}\`。
+原素材是带透明通道的 WebM 动画，本项目用 \`scripts/video-look.sh\` 按 \`looks/${id}/video.txt\` 转成精灵图和静态立绘（缩放、对齐、换格式，
+捧茶的几段前后接上了拿出 / 收起茶杯）；\`character.json\`（姿态对应、台词）是本项目写的，部分台词取自 Claude-girl 的 pet-config.json（MIT）。
+
+美术素材按 CC BY-NC 4.0 授权（见 LICENSE.md）：须注明「克劳德大小姐 · Claude-girl」和仓库地址，不得商用。克劳德大小姐的形象由百度贴吧社区共创。
+EOF
+  rm -rf "characters/$id"
+  mv "$out" "characters/$id"
+done
 
 echo "完成：characters/（$(du -sh "$ROOT/characters" | cut -f1)）：$(ls -d "$ROOT"/characters/*/ | xargs -n1 basename | tr '\n' ' ')"

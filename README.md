@@ -6,7 +6,7 @@ Claude 大小姐 **claudia** 的 macOS 桌宠：待在桌面上，跟着 Claude 
 
 ## 安装
 
-只需要 Xcode Command Line Tools（`xcode-select --install`），macOS 13 及以上。
+只需要 Xcode Command Line Tools（`xcode-select --install`），macOS 13 及以上。想要「茶会大小姐」形象的话再装 `brew install ffmpeg webp`（要把它的 WebM 动画转成精灵图；没装就跳过这一套，别的照常）。
 
 ```bash
 ./scripts/install.sh      # 拉素材 → 打包 → 装到 ~/Applications/claudia-pet.app → 打开
@@ -25,7 +25,7 @@ Claude 大小姐 **claudia** 的 macOS 桌宠：待在桌面上，跟着 Claude 
 ## 她会做什么
 
 - **跟着 Claude Code / Codex / Grok 干活**：你发消息时听你说，之后思考、看书（读文件 / 搜索）、写东西（改文件）、敲命令、查资料（上网）、派活（子代理）、整理记忆（压缩上下文）、有事问你（等授权或回答）；完成时开心（工具用得多时得意），出错哎呀，被打断吃惊。好几个会话同时干活时身边会出现每个会话的小卡片。
-- **换形象**：「外观 → 形象」里换衣服，冒一下烟换上，手上的活、额度接着显示。自带默认、「圣女」和「睡衣」三套（后两套来自 CrossPet；睡衣只有 5 张图，干活时多半是待机的样子），也可以自己加（见下）。
+- **换形象**：「外观 → 形象」里换衣服，冒一下烟换上，手上的活、额度接着显示。自带默认、「圣女」「睡衣」（来自 CrossPet；睡衣只有 5 张图，干活时多半是待机的样子）和「茶会大小姐」（来自 [克劳德大小姐 · Claude-girl](https://github.com/wangxianda941030/Claude-girl)，整套都是动画：托腮思考、敲小键盘、翻书、双手合十等你、捧茶、想太久冒烟……），也可以自己加（见下）。
 - **显示额度**：名牌下面显示 5 小时 / 每周已用额度，可选文字或额度条。
 - **邮件提醒**：直接连你的邮箱（IMAP），每分钟看一次收件箱。重要的新邮件用一个信纸样式的气泡念出发件人和主题，名牌旁边的小胶囊「✉ 4 · 王总」一直显示未读数和最新的重要发件人；点胶囊或气泡打开 Foxmail（没装就开网页邮箱）。见下面「邮件提醒」。
 - **任务通知**：一轮完成或出错、等你授权或回答时发系统通知（可设成只在终端 / Claude 不在前台时通知）。
@@ -99,7 +99,8 @@ web/              网页画面（取自 claudia-pet；mail.js 是本项目加的
 plugin/           Claude Code 插件（写 ~/.claudia/state/claude-*.json，会话开始时用 open 拉起桌宠）
                   Codex / Grok 没有单独的插件：程序自己就是 hook（mac/Sources/Hooks.swift 共用部分，
                   Codex.swift、Grok.swift 各自的事件对应，写 codex-*.json / grok-*.json）
-scripts/          fetch-assets.sh 拉素材 / build.sh 打包 / install.sh 安装 / prepare-look.swift 整理新衣服立绘
+scripts/          fetch-assets.sh 拉素材 / build.sh 打包 / install.sh 安装 / prepare-look.swift 整理新衣服立绘 /
+                  video-look.sh 把带透明通道的 WebM 动画转成形象（精灵图 + 静态立绘）
 docs/looks/       做新衣服：流程和生图提示词
 looks/            用别人的图拼出来的形象：怎么拼（poses.txt）和本项目写的设置台词（character.json）
 upstream/         上游的许可、来源说明和固定的提交号

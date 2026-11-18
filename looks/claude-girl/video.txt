@@ -1,0 +1,53 @@
+# 克劳德大小姐（Claude-girl）：用它的 clips/*.webm 转成精灵图和静态立绘（scripts/video-look.sh）
+# 片段代号见 Claude-girl 的 pet-config.json / renderer/pet.js：
+#   A01 待机  A02 托腮思考  A03 敲小键盘  A04 写好啦（完成）  A05 冒汗道歉  A06 双手合十等你  A07 捧茶歇一会儿
+#   B01 茶杯空了  B02 揉眼睛打哈欠  B04 开心挥手  B05 伸懒腰  C01 喝茶  C02 翻书  C03 礼貌婉拒  C04 腹黑微笑
+#   C05 被戳炸毛  C06 被戳害羞  D01 你说得完全正确  D02 掏出行为准则  D03 超长思考  D04 号又没了  D05 钱包倒空
+#   D06 限额了五小时后见  X1 拿出茶杯  X2 收起茶杯
+# 捧茶的几段（A07、B01、C01）首尾都拿着茶杯：前后接上 X1 / X2，演完回到空手，和别的动作接得上
+
+calibrate A01
+
+sheet 待机 A01
+sheet 托腮思考 A02
+sheet 超长思考 D03
+sheet 敲小键盘 A03
+sheet 翻书 C02
+sheet 双手合十等你 A06
+sheet 掏出行为准则 D02
+sheet 写好啦 A04
+sheet 你说得完全正确 D01
+sheet 冒汗道歉 A05
+sheet 礼貌婉拒 C03
+sheet 被戳炸毛 C05
+sheet 被戳害羞 C06
+sheet 开心挥手 B04
+sheet 伸懒腰 B05
+sheet 揉眼睛打哈欠 B02
+sheet 限额了五小时后见 D06
+sheet 腹黑微笑 C04
+sheet 号又没了 D04
+sheet 钱包倒空 D05
+sheet 喝茶 X1+C01+X2
+sheet 捧茶歇一会儿 X1+A07+X2
+sheet 茶杯空了 X1+B01+X2
+
+# 静态立绘（动画关掉、省电模式、动画还没加载好时用）
+still idle A01 0
+still listening A02 0.1
+still thinking A02 0.45
+still writing A03 0.45
+still running A03 0.45
+still reading C02 0.45
+still searching C02 0.45
+still asking A06 0.45
+still delegating D02 0.5
+still happy A04 0.5
+still proud D01 0.5
+still oops A05 0.5
+still sorry A05 0.5
+still surprised C05 0.5
+still pat C06 0.5
+still tired D06 0.5
+still sleeping D06 0.5
+still bye B04 0.4
