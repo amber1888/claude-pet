@@ -24,7 +24,7 @@ Claude 大小姐 **claudia** 的 macOS 桌宠：待在桌面上，跟着 Claude 
 ## 她会做什么
 
 - **跟着 Claude Code / Codex 干活**：你发消息时听你说，之后思考、看书（读文件 / 搜索）、写东西（改文件）、敲命令、查资料（上网）、派活（子代理）、整理记忆（压缩上下文）、有事问你（等授权或回答）；完成时开心（工具用得多时得意），出错哎呀，被打断吃惊。好几个会话同时干活时身边会出现每个会话的小卡片。
-- **换形象**：「外观 → 形象」里换衣服，冒一下烟换上，手上的活、额度接着显示。自带默认和「圣女」（来自 CrossPet）两套，也可以自己加（见下）。
+- **换形象**：「外观 → 形象」里换衣服，冒一下烟换上，手上的活、额度接着显示。自带默认、「圣女」和「睡衣」三套（后两套来自 CrossPet；睡衣只有 5 张图，干活时多半是待机的样子），也可以自己加（见下）。
 - **显示额度**：名牌下面显示 5 小时 / 每周已用额度，可选文字或额度条。
 - **任务通知**：一轮完成或出错、等你授权或回答时发系统通知（可设成只在终端 / Claude 不在前台时通知）。
 - **会被摸、会生气**：单击摸头；按住来回晃会不耐烦、鼓脸、红温、赌气，要摸头哄回来。
@@ -52,6 +52,12 @@ Claude 大小姐 **claudia** 的 macOS 桌宠：待在桌面上，跟着 Claude 
 
 放好后点「重新扫描形象」。和自带形象同名的文件夹会被忽略。
 
+**想用 AI 生图做一套新衣服**：[docs/looks/](docs/looks/README.md) 里有完整流程、每个姿态的生图提示词（带女仆装、学院制服、冬装、浴衣、睡衣五套衣服描述）和参考图对照表；画好后用对齐脚本一步整理成形象文件夹：
+
+```bash
+swift scripts/prepare-look.swift ~/Downloads/maid maid --name 女仆   # 原图文件夹、形象 id、菜单名
+```
+
 ## 和 Windows 版的差别
 
 - 只有「待在桌面上」：浮在所有窗口上面、所有桌面空间都在，活动范围是所在显示器的可用区域（不含菜单栏和程序坞）。还没做「待在 Claude 窗口里」、多开、桌面端 MCP 接入、设置窗口（设置都在右键菜单里）。
@@ -64,7 +70,9 @@ mac/Sources/      Swift 外壳：透明窗口、鼠标、拖拽 / 走路的窗�
 web/              网页画面（原样取自 claudia-pet）
 plugin/           Claude Code 插件（写 ~/.claudia/state/claude-*.json，会话开始时用 open 拉起桌宠）
                   Codex 没有单独的插件：mac/Sources/Codex.swift 就是 hook（写 codex-*.json）
-scripts/          fetch-assets.sh 拉素材 / build.sh 打包 / install.sh 安装
+scripts/          fetch-assets.sh 拉素材 / build.sh 打包 / install.sh 安装 / prepare-look.swift 整理新衣服立绘
+docs/looks/       做新衣服：流程和生图提示词
+looks/            用别人的图拼出来的形象：怎么拼（poses.txt）和本项目写的设置台词（character.json）
 upstream/         上游的许可、来源说明和固定的提交号
 ```
 

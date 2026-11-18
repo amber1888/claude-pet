@@ -1,0 +1,10 @@
+# 睡衣形象：CrossPet 彩蛋 egg-claude-pajamas 的 5 张全身图，换个文件名当各个姿态用。
+# 每行：<姿态文件名> <原图文件名>。没列的姿态（思考、写东西……）网页会顺着替补找，最后用 idle。
+idle.webp      pop.webp
+happy.webp     escape.webp
+sleeping.webp  escape.webp
+surprised.webp caught.webp
+oops.webp      caught.webp
+snack.webp     pretend.webp
+rice.webp      pretend.webp
+bye.webp       bye.webp
