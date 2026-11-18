@@ -12,13 +12,14 @@
 
 ## 角色素材（不在本仓库里）
 
-角色立绘、动画精灵图、台词（`characters/`）和图标（`assets/AppIcon.png`）由 `scripts/fetch-assets.sh` 从 claudia-pet 固定提交拉取，打包进 `.app` 一起分发时须遵守它们的授权：
+角色立绘、动画精灵图、台词（`characters/`）和图标（`assets/AppIcon.png`）由 `scripts/fetch-assets.sh` 从 claudia-pet 和 CrossPet 的固定提交拉取，打包进 `.app` 一起分发时须遵守它们的授权：
 
 - 立绘、设定、台词：CrossPet v1.3.8 及 claudia-pet 的衍生图，**CC BY-NC-SA 4.0**
+- 「圣女」形象（`characters/claude-saint/`）：原样取自 CrossPet 的 `characters/claude-saint`（提交见 `upstream/crosspet-COMMIT`），**CC BY-NC-SA 4.0**；没有台词的场合沿用 claudia 的台词
 - 动画动作（`characters/claude/anim/`）：hunmer 的 claude-pet 动作包（[hunmer/aboutme-pets](https://github.com/hunmer/aboutme-pets)），作者书面授权按 **CC BY-NC-SA 4.0** 在 claudia-pet 中使用
 - 图标：claudia-pet 以 CrossPet 素材为参考制作，**CC BY-NC-SA 4.0**
 
-CC BY-NC-SA 4.0 要求：署名、**不得商用**、改编后按同一协议发布。详细来源见拉取后的 `characters/LICENSE.md`、`characters/README.md` 和 `upstream/claudia-pet-NOTICE.md`。
+CC BY-NC-SA 4.0 要求：署名、**不得商用**、改编后按同一协议发布。详细来源见拉取后的 `characters/LICENSE.md`、`characters/README.md`、`characters/claude-saint/SOURCE.md` 和 `upstream/claudia-pet-NOTICE.md`。
 
 ## 商标
 

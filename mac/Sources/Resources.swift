@@ -3,7 +3,7 @@ import WebKit
 
 /// claudia://app/… → 程序自带的文件。只认两种形状：
 ///   /<网页文件>                          → web/ 里的 html / js / css
-///   /characters/<角色>/[anim/]<图>       → 立绘、动画精灵图（只给 .webp / .png）
+///   /characters/<角色>/[anim/]<图>       → 立绘、动画精灵图（只给 .webp / .png；角色文件夹可能在程序里，也可能在 ~/.claudia/characters）
 /// 别的（目录跳转、character.json、设置）一律不给。
 final class ResourceHandler: NSObject, WKURLSchemeHandler {
     private var stopped = Set<ObjectIdentifier>()
@@ -31,7 +31,7 @@ final class ResourceHandler: NSObject, WKURLSchemeHandler {
         let name = segs.last!
         let ext = (name as NSString).pathExtension.lowercased()
         guard ext == "webp" || ext == "png" else { return nil }
-        var url = Store.characters.appendingPathComponent(segs[1])
+        guard var url = Store.characterDirs[segs[1]] else { return nil }   // 只给清单里有的形象
         if anim { url.appendPathComponent("anim") }
         url.appendPathComponent(name)
         return (url, ext == "webp" ? "image/webp" : "image/png")

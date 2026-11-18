@@ -93,14 +93,47 @@ enum Store {
             .sorted { Array($0.lastPathComponent.utf16).lexicographicallyPrecedes(Array($1.lastPathComponent.utf16)) }
     }
 
-    /// 扫描 characters/<id>/：character.json + 立绘（文件名去掉 -2、-3 是姿态名，idle-blink 是眨眼帧）+ anim/ 里的精灵图
+    // ---------------- 形象 ----------------
+    /// 形象 = characters/ 下的一个文件夹（程序自带的 + ~/.claudia/characters/ 里你自己放的）。
+    /// character.json 写了 "skinOf": "claude" 的是 claudia 的另一套衣服：没写的设置和台词沿用 claudia 的，
+    /// 名字跟着 claudia 走（改名对所有衣服生效），菜单里显示 skinName。
+    /// 动画精灵图和碰边翻页（animations / frames / clipLines）画的是默认那套衣服，不沿用：换装后只用自己的立绘，
+    /// 衣服自己带了 anim/ 和 animations 就用自己的。
+    static let baseCharacter = "claude"
+    static var userCharacters: URL { data.appendingPathComponent("characters") }
+    /// 角色 id → 文件夹（manifest() 里填），读图时按它找
+    static var characterDirs: [String: URL] = [:]
+    static let notInherited: Set<String> = ["animations", "frames", "clipLines", "name", "lines", "skinOf", "skinName"]
+
+    static func characterFolders() -> [(id: String, dir: URL)] {
+        var out: [(String, URL)] = [], seen = Set<String>()
+        for root in [characters, userCharacters] {
+            let dirs = ((try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: [.isDirectoryKey])) ?? [])
+                .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+                .sorted { $0.lastPathComponent < $1.lastPathComponent }
+            for d in dirs where seen.insert(d.lastPathComponent).inserted { out.append((d.lastPathComponent, d)) }   // 同名时自带的优先
+        }
+        return out
+    }
+
+    /// 扫描各个形象：character.json + 立绘（文件名去掉 -2、-3 是姿态名，idle-blink 是眨眼帧）+ anim/ 里的精灵图
     static func manifest(customName: String?) -> [String: Any] {
         var chars: [String: Any] = [:]
-        let dirs = ((try? FileManager.default.contentsOfDirectory(at: characters, includingPropertiesForKeys: [.isDirectoryKey])) ?? [])
-            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
-        for dir in dirs {
+        var dirs: [String: URL] = [:]
+        let base = readJSON(characters.appendingPathComponent("\(baseCharacter)/character.json")) ?? [:]
+        let custom = customName?.trimmingCharacters(in: .whitespaces).nilIfEmpty
+        for (id, dir) in characterFolders() {
             guard var info = readJSON(dir.appendingPathComponent("character.json")) else { continue }
-            let id = dir.lastPathComponent
+            let family = id == baseCharacter || info["skinOf"] as? String == baseCharacter
+            if id != baseCharacter && family {
+                var merged = base.filter { !notInherited.contains($0.key) }
+                for (k, v) in info { merged[k] = v }
+                var lines = (base["lines"] as? [String: Any]) ?? [:]
+                for (k, v) in (info["lines"] as? [String: Any]) ?? [:] { lines[k] = v }
+                merged["lines"] = lines
+                info = merged
+            }
+            if family { info["name"] = custom ?? (base["name"] as? String) ?? "claudia" }
             var poses: [String: [String]] = [:]
             var blink: Any = NSNull(), blinkBase: Any = NSNull()
             for f in files(dir, ext: ["webp", "png"]) {
@@ -117,10 +150,31 @@ enum Store {
             for f in files(dir.appendingPathComponent("anim"), ext: ["webp"]) {
                 sheets[f.deletingPathExtension().lastPathComponent] = "\(origin)/characters/\(enc(id))/anim/\(enc(f.lastPathComponent))"
             }
-            if id == "claude", let n = customName?.trimmingCharacters(in: .whitespaces), !n.isEmpty { info["name"] = n }
             info["poses"] = poses; info["blink"] = blink; info["blinkBase"] = blinkBase; info["sheets"] = sheets
             chars[id] = info
+            dirs[id] = dir
         }
+        characterDirs = dirs
         return ["characters": chars]
     }
+
+    /// 菜单里的形象列表：claudia 自己的几套衣服在前（默认那套第一），别的角色在后
+    static func looks(_ manifest: [String: Any]) -> [(id: String, label: String)] {
+        let chars = (manifest["characters"] as? [String: Any]) ?? [:]
+        func info(_ id: String) -> [String: Any] { chars[id] as? [String: Any] ?? [:] }
+        func family(_ id: String) -> Bool { id == baseCharacter || info(id)["skinOf"] as? String == baseCharacter }
+        return chars.keys.sorted { a, b in
+            if (a == baseCharacter) != (b == baseCharacter) { return a == baseCharacter }
+            if family(a) != family(b) { return family(a) }
+            return a < b
+        }.map { id in
+            let i = info(id)
+            let label = id == baseCharacter ? "默认" : (i["skinName"] as? String) ?? (i["name"] as? String) ?? id
+            return (id, family(id) || id == baseCharacter ? label : "\(label)（其他角色）")
+        }
+    }
+}
+
+extension String {
+    var nilIfEmpty: String? { isEmpty ? nil : self }
 }

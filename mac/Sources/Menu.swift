@@ -98,6 +98,13 @@ extension Pet {
         }
         menu.sep()
         menu.sub("外观") { m in
+            m.sub("形象") { s in
+                let cur = cid
+                for (id, label) in looks { s.add(label, checked: id == cur) { [weak self] in self?.setLook(id) } }
+                s.sep()
+                s.add("打开自定义形象文件夹…") { [weak self] in self?.openUserLooks() }
+                s.add("重新扫描形象") { [weak self] in self?.reloadLooks() }
+            }
             m.sub("人物大小") { s in
                 for v in [0.6, 0.8, 1.0, 1.2, 1.4, 1.6] {
                     s.add("\(Int(v * 100))%", checked: abs(Pet.scale - v) < 0.01) { [weak self] in self?.set("size", v) }
@@ -143,11 +150,22 @@ extension Pet {
                 self?.set("notifyBackgroundOnly", !Store.flag("notifyBackgroundOnly"))
             }
         }
-        menu.sub("接入 Claude") { m in
+        menu.sub("接入 AI 助手") { m in
+            let note = { (text: String) in
+                let i = NSMenuItem(title: "    " + text, action: nil, keyEquivalent: ""); i.isEnabled = false; m.addItem(i)
+            }
             let on = Integration.pluginInstalled
             m.add("Claude Code 插件", checked: on) { Integration.toggle(install: !on) }
-            let seen = Integration.seenText
-            let info = NSMenuItem(title: seen, action: nil, keyEquivalent: ""); info.isEnabled = false; m.addItem(info)
+            note(Integration.seenText)
+            let codex = CodexIntegration.installed
+            m.add("Codex hooks", checked: codex) { CodexIntegration.toggle(install: !codex) }
+            note(CodexIntegration.seenText)
+            m.sep()
+            m.sub("额度显示哪一家") { s in
+                for (id, label) in [("auto", "自动（最近在用的）"), ("claude", "Claude"), ("codex", "Codex")] {
+                    s.add(label, checked: Pet.quotaSource == id) { [weak self] in self?.set("quotaSource", id) }
+                }
+            }
             m.sep()
             m.add("登录时自动启动", checked: LoginItem.enabled) { LoginItem.toggle() }
             m.add("打开数据文件夹") { NSWorkspace.shared.open(Store.data) }
@@ -193,7 +211,7 @@ extension Pet {
     }
 }
 
-// ---------------- 接入 Claude Code 插件 ----------------
+// ---------------- 接入 Claude Code 插件（Codex 的在 Codex.swift） ----------------
 /// 把程序里的 plugin 文件夹加进 ~/.claude/settings.json 的 env.CLAUDE_CODE_PLUGIN_DIRS（多个目录用 : 隔开，别人的照留）。
 /// 改之前先备份成 settings.json.bak-claudia-<时间>，只留最近 3 份。新开的 Claude Code 会话生效。
 enum Integration {
@@ -214,9 +232,26 @@ enum Integration {
     static var seenText: String {
         guard let s = try? String(contentsOf: Store.state.appendingPathComponent("seen-plugin"), encoding: .utf8),
               let ts = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) else { return "还没收到过 Claude Code 的消息" }
+        return "上次收到消息：" + ago(ts)
+    }
+    static func ago(_ ts: Double) -> String {
         let ago = Date().timeIntervalSince1970 - ts
-        let t = ago < 60 ? "刚刚" : ago < 3600 ? "\(Int(ago / 60)) 分钟前" : ago < 86400 ? "\(Int(ago / 3600)) 小时前" : "\(Int(ago / 86400)) 天前"
-        return "上次收到消息：\(t)"
+        return ago < 60 ? "刚刚" : ago < 3600 ? "\(Int(ago / 60)) 分钟前" : ago < 86400 ? "\(Int(ago / 3600)) 小时前" : "\(Int(ago / 86400)) 天前"
+    }
+
+    /// 改配置文件前先备份成 <文件>.bak-claudia-<时间>，只留最近 3 份。返回备份路径（原来没有这个文件时是 nil）
+    static func backup(_ file: URL) throws -> String? {
+        let fm = FileManager.default
+        guard fm.fileExists(atPath: file.path) else { return nil }
+        let f = DateFormatter(); f.dateFormat = "yyyyMMdd-HHmmss"
+        let copy = file.path + ".bak-claudia-" + f.string(from: Date())
+        try? fm.removeItem(atPath: copy)
+        try fm.copyItem(atPath: file.path, toPath: copy)
+        let dir = file.deletingLastPathComponent()
+        let olds = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
+            .filter { $0.hasPrefix(file.lastPathComponent + ".bak-claudia-") }.sorted(by: >).dropFirst(3)
+        for o in olds { try? fm.removeItem(at: dir.appendingPathComponent(o)) }
+        return copy
     }
 
     static func toggle(install: Bool) {
@@ -242,18 +277,7 @@ enum Integration {
         var env = (settings!["env"] as? [String: Any]) ?? [:]
         if list.isEmpty { env.removeValue(forKey: "CLAUDE_CODE_PLUGIN_DIRS") } else { env["CLAUDE_CODE_PLUGIN_DIRS"] = list.joined(separator: ":") }
         if env.isEmpty { settings!.removeValue(forKey: "env") } else { settings!["env"] = env }
-        var backup: String?
-        if fm.fileExists(atPath: file.path) {
-            let f = DateFormatter(); f.dateFormat = "yyyyMMdd-HHmmss"
-            let copy = file.path + ".bak-claudia-" + f.string(from: Date())
-            try? fm.removeItem(atPath: copy)
-            try fm.copyItem(atPath: file.path, toPath: copy)
-            backup = copy
-            let dir = file.deletingLastPathComponent()
-            let olds = ((try? fm.contentsOfDirectory(atPath: dir.path)) ?? [])
-                .filter { $0.hasPrefix(file.lastPathComponent + ".bak-claudia-") }.sorted(by: >).dropFirst(3)
-            for o in olds { try? fm.removeItem(at: dir.appendingPathComponent(o)) }
-        }
+        let backup = try Integration.backup(file)
         try Store.writeJSON(file, settings!)
         return (install ? "已接入 Claude Code 插件。新开的 Claude Code 会话生效。" : "已撤销 Claude Code 插件。")
             + "\n\n改了：\(file.path)" + (backup.map { "\n备份：\($0)" } ?? "")

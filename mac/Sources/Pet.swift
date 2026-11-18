@@ -50,6 +50,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         web.load(URLRequest(url: URL(string: "\(Store.origin)/index.html")!))
         setupStatusItem()
         startDebugHook()
+        if CodexIntegration.installed { CodexIntegration.refreshLink() }
         Hotkey.shared.onPress = { [weak self] in self?.toggleHidden() }
         applyHotkey()
         timers.append(every(0.3) { [weak self] in self?.poll() })
@@ -86,7 +87,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         ready = false
         manifest = Store.manifest(customName: Store.defaults.string(forKey: "name"))
-        let script = "init(\(Store.json(manifest))); setCharacter('claude', true); setAuraMode(\(Pet.q(Pet.auraMode))); "
+        let script = "init(\(Store.json(manifest))); setCharacter(\(Pet.q(cid)), true); setAuraMode(\(Pet.q(Pet.auraMode))); "
             + "setShowName(\(Pet.showName)); setPowerSave(\(Store.flag("powerSave", false))); setQuotaStyle(\(Pet.q(Pet.quotaStyle))); "
             + "setBehavior(\(Store.json(behaviorState)))"
         web.evaluateJavaScript(script) { [weak self] _, err in
@@ -338,35 +339,73 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         if let reason { js("walkEnded('\(reason)')") }
     }
 
-    // ---------------- 读 Claude Code 插件写的状态和额度 ----------------
+    // ---------------- 读 Claude Code 插件 / Codex hook 写的状态和额度 ----------------
+    // 网页按角色收状态，这里都交给当前形象（cid）：两家的状态谁新演谁，多会话合在一起演，额度按设置挑一家
+    static let agents = ["claude", "codex"]
     private var stamps: [String: String] = [:]
     private let notices = TaskNotices()
+    private var sessionMaps: [String: Any] = [:]       // 家 → 会话表
+    private var quotas: [String: (value: Any, at: Int)] = [:]
+    private var lastActiveAgent = "claude"
+    private var lastState: Any?
+    private var lastSessions: [String: Any] = [:]
+    private var shownQuota = ""
 
     private func poll() {
         guard ready else { return }
         let fm = FileManager.default
-        for kind in ["state", "quota", "sessions"] {
-            let file = Store.state.appendingPathComponent("claude-\(kind).json")
-            guard let attr = try? fm.attributesOfItem(atPath: file.path), let mtime = attr[.modificationDate] as? Date,
-                  let size = attr[.size] as? Int, size < 1_000_000 else { continue }
-            let stamp = "\(mtime.timeIntervalSince1970):\(size)", key = "claude-\(kind)"
-            if stamps[key] == stamp { continue }
-            if kind == "state" && Date().timeIntervalSince(mtime) > 600 { stamps[key] = stamp; continue }   // 只认 10 分钟内的
-            guard let value = Store.readJSON(file) else { continue }   // 可能正被写一半，下次再读
-            stamps[key] = stamp
-            let json = Store.json(value)
-            switch kind {
-            case "sessions": js("setSessions('claude', \(json))")
-            case "state": js("applyCharState('claude', \(json))")
-            default: js("setQuota('claude', \(json), \(Int(mtime.timeIntervalSince1970)))")
+        var sessionsChanged = false, quotaChanged = false
+        var states: [(agent: String, at: Date, value: Any)] = []
+        for agent in Pet.agents {
+            for kind in ["state", "quota", "sessions"] {
+                let file = Store.state.appendingPathComponent("\(agent)-\(kind).json")
+                guard let attr = try? fm.attributesOfItem(atPath: file.path), let mtime = attr[.modificationDate] as? Date,
+                      let size = attr[.size] as? Int, size < 1_000_000 else { continue }
+                let stamp = "\(mtime.timeIntervalSince1970):\(size)", key = "\(agent)-\(kind)"
+                if stamps[key] == stamp { continue }
+                if kind == "state" && Date().timeIntervalSince(mtime) > 600 { stamps[key] = stamp; continue }   // 只认 10 分钟内的
+                guard let value = Store.readJSON(file) else { continue }   // 可能正被写一半，下次再读
+                stamps[key] = stamp
+                switch kind {
+                case "sessions":
+                    sessionMaps[agent] = value; sessionsChanged = true
+                case "state":
+                    states.append((agent, mtime, value))
+                default:
+                    quotas[agent] = (value, Int(mtime.timeIntervalSince1970)); quotaChanged = true
+                }
             }
         }
+        for st in states.sorted(by: { $0.at < $1.at }) {   // 同一次读到两家时，新的后演
+            lastState = st.value
+            js("applyCharState(\(Pet.q(cid)), \(Store.json(st.value)))")
+            if st.agent != lastActiveAgent { lastActiveAgent = st.agent; quotaChanged = true }
+        }
+        if sessionsChanged {
+            var merged: [String: Any] = [:]
+            for agent in Pet.agents { for (k, v) in (sessionMaps[agent] as? [String: Any]) ?? [:] { merged[k] = v } }
+            lastSessions = merged
+            js("setSessions(\(Pet.q(cid)), \(Store.json(merged)))")
+        }
+        if quotaChanged { applyQuota() }
         pollNotices()
+    }
+
+    static var quotaSource: String { Store.string("quotaSource", "auto", allowed: ["auto", "claude", "codex"]) }
+    /// 额度显示哪一家：自动时跟着最近有动静的那家走（那家没有额度数据就用另一家的）
+    func applyQuota() {
+        let want = Pet.quotaSource == "auto" ? lastActiveAgent : Pet.quotaSource
+        let agent = quotas[want] != nil || Pet.quotaSource != "auto" ? want : (Pet.agents.first { quotas[$0] != nil } ?? want)
+        guard let q = quotas[agent] else { return }
+        let json = Store.json(q.value), key = "\(cid):\(agent):\(q.at):\(json)"
+        if key == shownQuota { return }
+        shownQuota = key
+        js("setQuota(\(Pet.q(cid)), \(json), \(q.at))")
     }
 
     private func pollNotices() {
         let files = ((try? FileManager.default.contentsOfDirectory(at: Store.state, includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey])) ?? [])
-            .filter { $0.lastPathComponent.hasPrefix("claude-notify-") && $0.pathExtension == "json" }
+            .filter { f in f.pathExtension == "json" && Pet.agents.contains { f.lastPathComponent.hasPrefix("\($0)-notify-") } }
         for f in files {
             guard let v = try? f.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
                   let mtime = v.contentModificationDate, let size = v.fileSize,
@@ -375,27 +414,28 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
             if stamps[key] == stamp { continue }
             guard let data = Store.readJSON(f), let events = data["events"] as? [[String: Any]] else { continue }
             stamps[key] = stamp
+            let agent = f.lastPathComponent.hasPrefix("codex-") ? "Codex" : "Claude"
             for e in events {
                 guard let id = e["id"] as? String, let kind = e["kind"] as? String, let ts = e["ts"] as? Double else { continue }
-                taskNotice(id: id, kind: kind, ts: ts)
+                taskNotice(id: id, kind: kind, ts: ts, agent: agent)
             }
         }
     }
 
     /// 前台是 Claude 桌面端或常见的终端 / 编辑器时，算你正看着 Claude Code
     private static let claudeFront: Set<String> = [
-        "com.anthropic.claudefordesktop", "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty",
+        "com.anthropic.claudefordesktop", "com.openai.codex", "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty",
         "dev.warp.Warp-Stable", "com.github.wez.wezterm", "net.kovidgoyal.kitty", "org.alacritty",
         "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92", "dev.zed.Zed",
     ]
-    private func taskNotice(id: String, kind: String, ts: Double) {
+    private func taskNotice(id: String, kind: String, ts: Double, agent: String) {
         let enabled = Store.flag(kind == "waiting" ? "notifyWaiting" : "notifyResults")
         let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier.map { Pet.claudeFront.contains($0) } ?? false
         guard notices.accept(id: id, kind: kind, ts: ts, enabled: enabled, foreground: front,
                              backgroundOnly: Store.flag("notifyBackgroundOnly")) else { return }
-        let title = kind == "waiting" ? "Claude 需要你确认" : kind == "error" ? "Claude 任务出错" : "Claude 任务已完成"
-        let body = kind == "waiting" ? "有授权申请或问题等待你处理，回到 Claude 看一下吧。"
-            : kind == "error" ? "这一轮未能正常完成，请回到 Claude 查看。" : "这一轮工作已结束，可以回到 Claude 查看结果。"
+        let title = kind == "waiting" ? "\(agent) 需要你确认" : kind == "error" ? "\(agent) 任务出错" : "\(agent) 任务已完成"
+        let body = kind == "waiting" ? "有授权申请或问题等待你处理，回到 \(agent) 看一下吧。"
+            : kind == "error" ? "这一轮未能正常完成，请回到 \(agent) 查看。" : "这一轮工作已结束，可以回到 \(agent) 查看结果。"
         Notifier.send(title: title, body: body)
     }
 
@@ -453,6 +493,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         case "showName": js("setShowName(\(Pet.showName))")
         case "auraMode": js("setAuraMode(\(Pet.q(Pet.auraMode)))")
         case "quotaStyle": js("setQuotaStyle(\(Pet.q(Pet.quotaStyle)))")
+        case "quotaSource": applyQuota()
         case "powerSave": js("setPowerSave(\(Store.flag("powerSave", false)))")
         case "idleEnabled", "idleFrequency", "clickBounce", "tumbleActions": js("setBehavior(\(Store.json(behaviorState)))")
         case "physicsEnabled": if !(value as? Bool ?? true) { stopMotion() }
@@ -464,8 +505,44 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         let n = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(20))
         if n.isEmpty { Store.defaults.removeObject(forKey: "name") } else { Store.defaults.set(n, forKey: "name") }
         manifest = Store.manifest(customName: Store.defaults.string(forKey: "name"))
-        let shown = (manifest["characters"] as? [String: Any])?["claude"].flatMap { ($0 as? [String: Any])?["name"] as? String } ?? "claudia"
-        js("setName('claude', \(Pet.q(shown)))")
+        for (id, v) in (manifest["characters"] as? [String: Any]) ?? [:] {
+            if let name = (v as? [String: Any])?["name"] as? String { js("setName(\(Pet.q(id)), \(Pet.q(name)))") }
+        }
+    }
+
+    // ---------------- 形象 ----------------
+    /// 当前形象：设置里选的那个还在就用它，不在了（文件夹删了）退回默认
+    var cid: String {
+        let want = Store.defaults.string(forKey: "look") ?? Store.baseCharacter
+        return (manifest["characters"] as? [String: Any])?[want] != nil ? want : Store.baseCharacter
+    }
+    var looks: [(id: String, label: String)] { Store.looks(manifest) }
+
+    /// 换形象：先把现在的状态、会话、额度交给新形象，再让网页冒烟换上（网页按角色记这些）
+    func setLook(_ id: String) {
+        guard (manifest["characters"] as? [String: Any])?[id] != nil else { return }
+        Store.defaults.set(id, forKey: "look")
+        handOver()
+        js("setCharacter(\(Pet.q(id)))")
+    }
+    private func handOver() {
+        let id = Pet.q(cid)
+        if let st = lastState { js("applyCharState(\(id), \(Store.json(st)))") }
+        js("setSessions(\(id), \(Store.json(lastSessions)))")
+        applyQuota()
+    }
+
+    /// 重新扫描形象文件夹（往 ~/.claudia/characters 里放了新衣服之后）
+    func reloadLooks() {
+        manifest = Store.manifest(customName: Store.defaults.string(forKey: "name"))
+        handOver()
+        js("init(\(Store.json(manifest))); setCharacter(\(Pet.q(cid)))")
+        Store.log("形象：\(looks.map { $0.id }.joined(separator: ", "))")
+    }
+
+    func openUserLooks() {
+        try? FileManager.default.createDirectory(at: Store.userCharacters, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(Store.userCharacters)
     }
     var hotkeyFailed = false
     private func applyHotkey() {
@@ -474,7 +551,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
 
     // ---------------- 菜单 ----------------
     var actionPoses: Set<String> {
-        guard let c = (manifest["characters"] as? [String: Any])?["claude"] as? [String: Any] else { return [] }
+        guard let c = (manifest["characters"] as? [String: Any])?[cid] as? [String: Any] else { return [] }
         var have = Set(((c["poses"] as? [String: Any]) ?? [:]).keys)
         let sheets = (c["sheets"] as? [String: Any]) ?? [:]
         for (k, v) in (c["animations"] as? [String: Any]) ?? [:] {

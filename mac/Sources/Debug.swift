@@ -17,6 +17,18 @@ extension Pet {
             guard let self, let code = try? String(contentsOf: cmd, encoding: .utf8) else { return }
             try? FileManager.default.removeItem(at: cmd)
             if code.hasPrefix("#throw") { self.debugThrow(); return }
+            if code.hasPrefix("#look ") {   // #look <形象 id>：和菜单里换形象一样；#look rescan 重新扫描
+                let id = String(code.dropFirst(6)).trimmingCharacters(in: .whitespacesAndNewlines)
+                if id == "rescan" { self.reloadLooks() } else { self.setLook(id) }
+                try? "look=\(self.cid) looks=\(self.looks.map { "\($0.id):\($0.label)" })\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                return
+            }
+            if code.hasPrefix("#codex ") {   // #codex install / #codex uninstall：不弹窗，结果写到 out.txt
+                let install = code.contains("uninstall") == false
+                let text = (try? CodexIntegration.set(install: install)) ?? "失败"
+                try? "\(text)\ninstalled=\(CodexIntegration.installed)\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                return
+            }
             self.web.evaluateJavaScript(code) { r, err in
                 let text = err.map { "ERROR: \($0)" } ?? "\(r ?? "undefined")"
                 let frame = self.window.frame
