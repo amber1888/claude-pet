@@ -18,7 +18,7 @@ ARCHS="${ARCHS:-$(uname -m)}"
 echo "编译 Swift（${ARCHS}）…"
 for arch in $ARCHS; do
   swiftc -O -target "$arch-apple-macos13.0" -module-name ClaudiaPet \
-    -framework AppKit -framework WebKit -framework Carbon -framework ServiceManagement -framework UserNotifications \
+    -framework AppKit -framework WebKit -framework Carbon -framework ServiceManagement -framework UserNotifications -framework Network -framework Security \
     mac/Sources/*.swift -o "$BUILD/claudia-pet-$arch"
 done
 lipo -create $(for arch in $ARCHS; do echo "$BUILD/claudia-pet-$arch"; done) -output "$APP/Contents/MacOS/claudia-pet"

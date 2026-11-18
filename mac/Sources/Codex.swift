@@ -1,24 +1,11 @@
 import AppKit
 
-// claudia-pet × Codex CLI
-// Codex 的 hooks 每个事件起一个进程，把 JSON 从 stdin 交过来。这里就是那个进程：
-//   ~/.claudia/bin/claudia-hook --hook codex   （软链到 claudia-pet.app 里的可执行文件）
-// 读完事件，写和 Claude Code 插件同样格式的状态文件（文件名前缀 codex-），几十毫秒内退出，不启动界面。
-//   codex-state.json      现在在干什么
-//   codex-sessions.json   多个会话各自在干什么（会话 id 前面加 codex:，和 Claude 的不会撞）
-//   codex-quota.json      5 小时 / 每周额度（从会话记录 transcript_path 里最后一条 rate_limits 读）
-//   codex-notify-*.json   完成 / 出错 / 等你确认的通知
-// 只写本机文件，不往 stdout 输出（SessionStart 的输出会被当成上下文），出什么错都以 0 退出，不影响 Codex。
+// claudia-pet × Codex CLI：~/.claudia/bin/claudia-hook --hook codex
+// 写哪些文件、怎么写见 Hooks.swift（前缀 codex-）。额度从会话记录 transcript_path 里最后一条 rate_limits 读。
 enum CodexHook {
     static let bigJobTools = 8   // 一轮里用了这么多次工具，完成时「得意」一下
 
-    static func run() -> Never {
-        let input = FileHandle.standardInput.readDataToEndOfFile()
-        if let e = (try? JSONSerialization.jsonObject(with: input)) as? [String: Any] {
-            handle(e)
-        }
-        exit(0)
-    }
+    static func run() -> Never { HookOut.run(agent: "codex", handle) }
 
     static func handle(_ e: [String: Any]) {
         let event = e["hook_event_name"] as? String ?? ""
@@ -26,56 +13,56 @@ enum CodexHook {
         let sid = "codex:" + rawSid
         let now = Date().timeIntervalSince1970
         let tool = e["tool_name"] as? String ?? ""
-        write("seen-codex", String(Int(now)))   // 心跳：菜单里显示「上次收到消息」
+        HookOut.write("seen-codex", String(Int(now)))   // 心跳：菜单里显示「上次收到消息」
 
         switch event {
         case "SessionStart":
             // 子代理开始时也会来一次 SessionStart（带的是主会话的 id）：这一轮还在干活，就当她在派活，不回待机
-            let busy = turn(sid) { _ in }["active", default: 0] > 0
+            let busy = HookOut.turn(sid) { _ in }["active", default: 0] > 0
             if busy || e["agent_id"] != nil {
-                setState(sid, "delegating", "PreToolUse", "", now)
+                HookOut.setState(sid, "delegating", "PreToolUse", "", now)
             } else {
-                ensurePet()
-                setState(sid, "idle", "SessionStart", "", now)
+                HookOut.ensurePet()
+                HookOut.setState(sid, "idle", "SessionStart", "", now)
                 readQuota(e["transcript_path"] as? String)
             }
         case "UserPromptSubmit":
-            ensurePet()
-            turn(sid) { $0 = ["active": 1] }
-            setState(sid, "listening", "UserPromptSubmit", "", now)
+            HookOut.ensurePet()
+            HookOut.turn(sid) { $0 = ["active": 1] }
+            HookOut.setState(sid, "listening", "UserPromptSubmit", "", now)
         case "PreToolUse":
-            turn(sid) { $0["tools", default: 0] += 1 }
-            setState(sid, pose(tool: tool, input: e["tool_input"]), "PreToolUse", tool, now)
+            HookOut.turn(sid) { $0["tools", default: 0] += 1 }
+            HookOut.setState(sid, pose(tool: tool, input: e["tool_input"]), "PreToolUse", tool, now)
         case "PostToolUse":
-            setState(sid, failed(e["tool_response"]) ? "oops" : "thinking", "PostToolUse", tool, now)
+            HookOut.setState(sid, failed(e["tool_response"]) ? "oops" : "thinking", "PostToolUse", tool, now)
         case "PermissionRequest":
-            setState(sid, "asking", "Notification", tool, now)
-            notify(rawSid, "waiting")
+            HookOut.setState(sid, "asking", "Notification", tool, now)
+            HookOut.notify(rawSid, "waiting")
         case "PostModelRequest":
             // 一次请求失败可能会重试：先记下，等这一轮停下时再算出没出错
             let bad = (e["status"] as? String) == "failed"
-            turn(sid) { $0["failed"] = bad ? 1 : 0 }
+            HookOut.turn(sid) { $0["failed"] = bad ? 1 : 0 }
         case "Stop":
-            let t = turn(sid) { $0 = [:] }
+            let t = HookOut.turn(sid) { $0 = [:] }
             if t["failed", default: 0] > 0 {
-                setState(sid, "oops", "Stop", "", now)
-                notify(rawSid, "error")
+                HookOut.setState(sid, "oops", "Stop", "", now)
+                HookOut.notify(rawSid, "error")
             } else {
-                setState(sid, t["tools", default: 0] >= bigJobTools ? "proud" : "happy", "Stop", "", now)
-                notify(rawSid, "complete")
+                HookOut.setState(sid, t["tools", default: 0] >= bigJobTools ? "proud" : "happy", "Stop", "", now)
+                HookOut.notify(rawSid, "complete")
             }
             readQuota(e["transcript_path"] as? String)
         case "Interrupt":
-            turn(sid) { $0 = [:] }
-            setState(sid, "surprised", "Stop", "", now)
+            HookOut.turn(sid) { $0 = [:] }
+            HookOut.setState(sid, "surprised", "Stop", "", now)
         case "PreCompact":
-            setState(sid, "compact", "PreCompact", "", now)
+            HookOut.setState(sid, "compact", "PreCompact", "", now)
         case "PostCompact":
             // 手动 /compact 压完这一轮就结束了，自己收尾；自动压缩之后还接着干活
-            if (e["trigger"] as? String) == "manual" { setState(sid, "happy", "Stop", "", now) }
-            else { setState(sid, "thinking", "PostCompact", "", now) }
+            if (e["trigger"] as? String) == "manual" { HookOut.setState(sid, "happy", "Stop", "", now) }
+            else { HookOut.setState(sid, "thinking", "PostCompact", "", now) }
         case "SessionEnd":
-            removeSession(sid)
+            HookOut.removeSession(sid)
         default:
             break
         }
@@ -84,7 +71,8 @@ enum CodexHook {
     // ---------------- 工具 → 姿势 ----------------
     static func pose(tool: String, input: Any?) -> String {
         let t = tool.lowercased()
-        if ["bash", "shell", "exec_command", "local_shell", "unified_exec"].contains(t) { return shellPose(command(input)) }
+        if ["bash", "shell", "exec_command", "local_shell", "unified_exec", "run_terminal_command"].contains(t) { return shellPose(command(input)) }
+        if t.hasPrefix("get_") && t.hasSuffix("_output") { return "running" }   // Grok：等后台命令 / 子代理的输出
         if t.range(of: "patch|write|edit|replace|create|plan", options: .regularExpression) != nil { return "writing" }
         if t.range(of: "read|grep|glob|list|view|cat", options: .regularExpression) != nil { return "reading" }
         if t.range(of: "web|fetch|browse|search|http", options: .regularExpression) != nil { return "searching" }
@@ -120,98 +108,15 @@ enum CodexHook {
     }
 
     static func failed(_ response: Any?) -> Bool {
+        if let s = response as? String {   // Grok：结果太大时整个变成一段截断了的文本，只认里面的 "exit_code": N
+            guard let m = s.range(of: #""exit_code":\s*(-?\d+)"#, options: .regularExpression) else { return false }
+            return Int(s[m].split(separator: ":").last!.trimmingCharacters(in: .whitespaces)) != 0
+        }
         guard let r = response as? [String: Any] else { return false }
         if let code = (r["exit_code"] ?? r["exitCode"]) as? Int { return code != 0 }
         if let ok = r["success"] as? Bool { return !ok }
         if let err = r["is_error"] as? Bool { return err }
         return false
-    }
-
-    // ---------------- 写文件 ----------------
-    static func write(_ name: String, _ value: Any) {
-        let url = Store.state.appendingPathComponent(name)
-        if let s = value as? String {
-            try? FileManager.default.createDirectory(at: Store.state, withIntermediateDirectories: true)
-            try? s.write(to: url, atomically: true, encoding: .utf8)
-        } else {
-            try? Store.writeJSON(url, value)
-        }
-    }
-
-    /// 几个 Codex 会话的 hook 进程可能同时改同一个文件：读、改、写整个过程加锁
-    static func locked<T>(_ body: () -> T) -> T {
-        try? FileManager.default.createDirectory(at: Store.state, withIntermediateDirectories: true)
-        let fd = open(Store.state.appendingPathComponent(".codex.lock").path, O_CREAT | O_RDWR, 0o644)
-        if fd >= 0 { flock(fd, LOCK_EX) }
-        defer { if fd >= 0 { flock(fd, LOCK_UN); close(fd) } }
-        return body()
-    }
-
-    static func setState(_ sid: String, _ pose: String, _ event: String, _ tool: String, _ ts: Double) {
-        write("codex-state.json", ["pose": pose, "event": event, "tool": tool, "ts": ts, "sid": sid, "agent": "codex", "noticeV": 1])
-        locked {
-            let file = Store.state.appendingPathComponent("codex-sessions.json")
-            var known = Store.readJSON(file) ?? [:]
-            known[sid] = ["pose": pose, "event": event, "ts": ts]
-            known = known.filter { ts - (($0.value as? [String: Any])?["ts"] as? Double ?? 0) <= 600 }
-            try? Store.writeJSON(file, known)
-        }
-    }
-
-    static func removeSession(_ sid: String) {
-        locked {
-            let file = Store.state.appendingPathComponent("codex-sessions.json")
-            guard var known = Store.readJSON(file), known[sid] != nil else { return }
-            known.removeValue(forKey: sid)
-            try? Store.writeJSON(file, known)
-        }
-        _ = turn(sid) { $0 = [:] }
-    }
-
-    /// 每个会话这一轮的计数（用了几次工具、最近一次请求是否失败）。返回改之前的值
-    @discardableResult
-    static func turn(_ sid: String, _ change: (inout [String: Int]) -> Void) -> [String: Int] {
-        locked {
-            let file = Store.state.appendingPathComponent("codex-turns.json")
-            var all = Store.readJSON(file) ?? [:]
-            let now = Date().timeIntervalSince1970
-            all = all.filter { now - (($0.value as? [String: Any])?["ts"] as? Double ?? 0) < 86_400 }
-            let entry = all[sid] as? [String: Any] ?? [:]
-            var counts: [String: Int] = [:]
-            for (k, v) in entry where k != "ts" { if let n = v as? Int { counts[k] = n } }
-            let before = counts
-            change(&counts)
-            var out: [String: Any] = counts
-            out["ts"] = now
-            all[sid] = out
-            try? Store.writeJSON(file, all)
-            return before
-        }
-    }
-
-    static func notify(_ rawSid: String, _ kind: String) {
-        let safe = rawSid.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? "default"
-        let name = "codex-notify-\(safe.prefix(100)).json"
-        let ts = Date().timeIntervalSince1970
-        locked {
-            let file = Store.state.appendingPathComponent(name)
-            var events = (Store.readJSON(file)?["events"] as? [[String: Any]]) ?? []
-            events = Array(events.filter { ts - ($0["ts"] as? Double ?? 0) < 120 }.suffix(31))
-            events.append(["id": "codex:\(rawSid):\(Int(ts * 1000))", "kind": kind, "ts": ts])
-            try? Store.writeJSON(file, ["events": events])
-        }
-    }
-
-    /// 叫她出来：已经在跑就不打扰；你从菜单退出过时，--ensure 会让她自己不出来
-    static func ensurePet() {
-        if !NSRunningApplication.runningApplications(withBundleIdentifier: Store.bundleID).isEmpty { return }
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        p.arguments = ["-g", "-b", Store.bundleID, "--args", "--ensure"]
-        p.standardInput = FileHandle.nullDevice
-        p.standardOutput = FileHandle.nullDevice   // 不占着 Codex 的管道，免得它等 open 退出
-        p.standardError = FileHandle.nullDevice
-        try? p.run()
     }
 
     // ---------------- 额度 ----------------
@@ -230,7 +135,7 @@ enum CodexHook {
             let payload = obj["payload"] as? [String: Any] ?? obj
             guard let limits = (payload["rate_limits"] ?? (payload["msg"] as? [String: Any])?["rate_limits"]) as? [String: Any] else { continue }
             let at = (obj["timestamp"] as? String).flatMap(parseDate) ?? Date()
-            if let q = quota(limits, at: at) { write("codex-quota.json", q) }
+            if let q = quota(limits, at: at) { HookOut.write("codex-quota.json", q) }
             return
         }
     }
@@ -286,9 +191,7 @@ enum CodexIntegration {
                          "PostModelRequest", "Stop", "Interrupt", "PreCompact", "PostCompact"]
     static var codexHome: URL { Store.env("CODEX_HOME").map { URL(fileURLWithPath: $0) } ?? Store.home.appendingPathComponent(".codex") }
     static var hooksFile: URL { codexHome.appendingPathComponent("hooks.json") }
-    /// 固定路径的软链：程序挪了位置、升级了，hooks.json 里的命令不变，不用在 Codex 里重新信任
-    static var hookLink: URL { Store.data.appendingPathComponent("bin/claudia-hook") }
-    static var command: String { "\"\(hookLink.path)\" --hook codex" }
+    static var command: String { HookOut.command("codex") }
 
     static func ours(_ handler: Any) -> Bool {
         guard let c = (handler as? [String: Any])?["command"] as? String else { return false }
@@ -302,23 +205,7 @@ enum CodexIntegration {
         }
     }
 
-    static var seenText: String {
-        guard let s = try? String(contentsOf: Store.state.appendingPathComponent("seen-codex"), encoding: .utf8),
-              let ts = Double(s.trimmingCharacters(in: .whitespacesAndNewlines)) else {
-            return installed ? "还没收到过 Codex 的消息（在 Codex 里用 /hooks 信任了吗？）" : "还没收到过 Codex 的消息"
-        }
-        return "上次收到消息：" + Integration.ago(ts)
-    }
-
-    /// 软链指向现在这个程序（每次启动时顺手修一下，程序挪过位置也能接上）
-    static func refreshLink() {
-        guard let exe = Bundle.main.executableURL?.resolvingSymlinksInPath().path else { return }
-        let fm = FileManager.default, link = hookLink.path
-        if (try? fm.destinationOfSymbolicLink(atPath: link)) == exe { return }
-        try? fm.createDirectory(at: hookLink.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try? fm.removeItem(atPath: link)
-        try? fm.createSymbolicLink(atPath: link, withDestinationPath: exe)
-    }
+    static var seenText: String { HookOut.seenText("codex", name: "Codex", installed: installed, hint: "（在 Codex 里用 /hooks 信任了吗？）") }
 
     static func toggle(install: Bool) {
         var message: String
@@ -348,7 +235,7 @@ enum CodexIntegration {
             hooks[event] = groups.isEmpty ? nil : groups
         }
         if install {
-            refreshLink()
+            HookOut.refreshLink()
             for event in events {
                 var groups = (hooks[event] as? [[String: Any]]) ?? []
                 groups.append(["hooks": [["type": "command", "command": command, "timeout": 5]]])

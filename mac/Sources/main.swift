@@ -3,10 +3,14 @@ import AppKit
 // claudia-pet（macOS）：Claude 大小姐桌宠。
 //   直接打开          出来；清掉「从菜单退出过」的标记
 //   --ensure          Claude Code 插件叫她出来时用：你从菜单退出过就不出来，直到你自己再打开
-//   --hook codex      Codex 的 hook：读 stdin 里的事件写状态文件就退出，不启动界面（见 Codex.swift）
+//   --hook codex|grok Codex / Grok 的 hook：读 stdin 里的事件写状态文件就退出，不启动界面（见 Hooks.swift）
 let args = CommandLine.arguments
 if let i = args.firstIndex(of: "--hook") {
-    if i + 1 < args.count && args[i + 1] == "codex" { CodexHook.run() }
+    switch i + 1 < args.count ? args[i + 1] : "" {
+    case "codex": CodexHook.run()
+    case "grok": GrokHook.run()
+    default: break
+    }
     exit(0)
 }
 let fm = FileManager.default

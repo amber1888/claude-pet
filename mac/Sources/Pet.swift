@@ -50,9 +50,10 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         web.load(URLRequest(url: URL(string: "\(Store.origin)/index.html")!))
         setupStatusItem()
         startDebugHook()
-        if CodexIntegration.installed { CodexIntegration.refreshLink() }
+        if CodexIntegration.installed || GrokIntegration.installed { HookOut.refreshLink() }
         Hotkey.shared.onPress = { [weak self] in self?.toggleHidden() }
         applyHotkey()
+        startMail()
         timers.append(every(0.3) { [weak self] in self?.poll() })
         timers.append(every(1.0 / 30) { [weak self] in self?.updatePassThrough() })
         let ws = NSWorkspace.shared.notificationCenter
@@ -98,6 +99,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
             self.applySizes(anchor: .corner)
             self.updatePageHidden()
             self.poll()
+            self.pushMail()
             if Store.defaults.string(forKey: "lastVersion") != Store.version {
                 Store.defaults.set(Store.version, forKey: "lastVersion")
             }
@@ -117,6 +119,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         if let r = m["hitRects"] as? [[Double]] { hitRects = r.filter { $0.count == 4 }; return }
         if let mm = m["motion"] as? [String: Any] { acceptMotion(mm); return }
         if m.keys.contains("walk") { handleWalk(m["walk"] as? [String: Any]); return }
+        if (m["mail"] as? String) == "open" { MailCenter.shared.openMail(); return }
         if let e = m["jsError"] { Store.log("网页脚本出错: \(e)"); return }
         if let e = m["imageError"] { Store.log("立绘加载失败: \(e)") }
     }
@@ -339,9 +342,10 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         if let reason { js("walkEnded('\(reason)')") }
     }
 
-    // ---------------- 读 Claude Code 插件 / Codex hook 写的状态和额度 ----------------
-    // 网页按角色收状态，这里都交给当前形象（cid）：两家的状态谁新演谁，多会话合在一起演，额度按设置挑一家
-    static let agents = ["claude", "codex"]
+    // ---------------- 读 Claude Code 插件 / Codex、Grok hook 写的状态和额度 ----------------
+    // 网页按角色收状态，这里都交给当前形象（cid）：几家的状态谁新演谁，多会话合在一起演，额度按设置挑一家
+    static let agents = ["claude", "codex", "grok"]
+    static let agentNames = ["claude": "Claude", "codex": "Codex", "grok": "Grok"]
     private var stamps: [String: String] = [:]
     private let notices = TaskNotices()
     private var sessionMaps: [String: Any] = [:]       // 家 → 会话表
@@ -376,7 +380,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
                 }
             }
         }
-        for st in states.sorted(by: { $0.at < $1.at }) {   // 同一次读到两家时，新的后演
+        for st in states.sorted(by: { $0.at < $1.at }) {   // 同一次读到几家时，新的后演
             lastState = st.value
             js("applyCharState(\(Pet.q(cid)), \(Store.json(st.value)))")
             if st.agent != lastActiveAgent { lastActiveAgent = st.agent; quotaChanged = true }
@@ -391,7 +395,24 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         pollNotices()
     }
 
-    static var quotaSource: String { Store.string("quotaSource", "auto", allowed: ["auto", "claude", "codex"]) }
+    // ---------------- 邮件提醒（Mail.swift） ----------------
+    private func startMail() {
+        let mc = MailCenter.shared
+        mc.onUpdate = { [weak self] in self?.pushMail() }
+        mc.onNew = { [weak self] acc, h, important in
+            guard let self else { return }
+            let m: [String: Any] = ["from": h.from, "subject": h.subject, "account": acc.email, "important": important]
+            if self.ready { self.js("mailArrived(\(Store.json(m)))") }
+            if important && Store.flag("mailNotify") { Notifier.send(title: "📮 \(h.from)", body: h.subject) }
+        }
+        mc.reload()
+    }
+    func pushMail() {
+        guard ready else { return }
+        js("setMail(\(Store.json(MailCenter.shared.summary)))")
+    }
+
+    static var quotaSource: String { Store.string("quotaSource", "auto", allowed: ["auto"] + Pet.agents) }
     /// 额度显示哪一家：自动时跟着最近有动静的那家走（那家没有额度数据就用另一家的）
     func applyQuota() {
         let want = Pet.quotaSource == "auto" ? lastActiveAgent : Pet.quotaSource
@@ -414,7 +435,8 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
             if stamps[key] == stamp { continue }
             guard let data = Store.readJSON(f), let events = data["events"] as? [[String: Any]] else { continue }
             stamps[key] = stamp
-            let agent = f.lastPathComponent.hasPrefix("codex-") ? "Codex" : "Claude"
+            let prefix = f.lastPathComponent.components(separatedBy: "-notify-")[0]
+            let agent = Pet.agentNames[prefix] ?? "Claude"
             for e in events {
                 guard let id = e["id"] as? String, let kind = e["kind"] as? String, let ts = e["ts"] as? Double else { continue }
                 taskNotice(id: id, kind: kind, ts: ts, agent: agent)
@@ -422,7 +444,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         }
     }
 
-    /// 前台是 Claude 桌面端或常见的终端 / 编辑器时，算你正看着 Claude Code
+    /// 前台是 Claude 桌面端或常见的终端 / 编辑器时，算你正看着 Claude Code（Codex、grok 也在终端里）
     private static let claudeFront: Set<String> = [
         "com.anthropic.claudefordesktop", "com.openai.codex", "com.apple.Terminal", "com.googlecode.iterm2", "com.mitchellh.ghostty",
         "dev.warp.Warp-Stable", "com.github.wez.wezterm", "net.kovidgoyal.kitty", "org.alacritty",
@@ -498,6 +520,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         case "idleEnabled", "idleFrequency", "clickBounce", "tumbleActions": js("setBehavior(\(Store.json(behaviorState)))")
         case "physicsEnabled": if !(value as? Bool ?? true) { stopMotion() }
         case "hideHotkey": applyHotkey()
+        case "mailEnabled": MailCenter.shared.reload()
         default: break
         }
     }

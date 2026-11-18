@@ -150,6 +150,30 @@ extension Pet {
                 self?.set("notifyBackgroundOnly", !Store.flag("notifyBackgroundOnly"))
             }
         }
+        menu.sub("邮件提醒") { m in
+            let mc = MailCenter.shared
+            let note = { (text: String) in
+                let i = NSMenuItem(title: "    " + text, action: nil, keyEquivalent: ""); i.isEnabled = false; m.addItem(i)
+            }
+            for w in mc.watchers {
+                let acc = w.account
+                m.sub(acc.email) { s in
+                    let i = NSMenuItem(title: w.status, action: nil, keyEquivalent: ""); i.isEnabled = false; s.addItem(i)
+                    s.sep()
+                    s.add("现在检查") { mc.checkAll(force: true) }
+                    s.add("修改（授权码、服务器）…") { mc.edit(acc) }
+                    s.add("删除这个邮箱") { mc.remove(acc) }
+                }
+                note(w.status)
+            }
+            m.add(mc.watchers.isEmpty ? "添加邮箱…" : "再添加一个邮箱…") { mc.edit() }
+            m.sep()
+            let vip = MailCenter.vip
+            m.add("重要邮件…") { mc.editVIP() }
+            note(vip.isEmpty ? "现在：每封新邮件都念出来" : "现在：含「\(vip.prefix(3).joined(separator: "、"))\(vip.count > 3 ? "…" : "")」的才念")
+            m.add("重要邮件发系统通知", checked: Store.flag("mailNotify")) { [weak self] in self?.set("mailNotify", !Store.flag("mailNotify")) }
+            m.add("暂停邮件提醒", checked: !MailCenter.enabled) { [weak self] in self?.set("mailEnabled", !MailCenter.enabled) }
+        }
         menu.sub("接入 AI 助手") { m in
             let note = { (text: String) in
                 let i = NSMenuItem(title: "    " + text, action: nil, keyEquivalent: ""); i.isEnabled = false; m.addItem(i)
@@ -160,9 +184,12 @@ extension Pet {
             let codex = CodexIntegration.installed
             m.add("Codex hooks", checked: codex) { CodexIntegration.toggle(install: !codex) }
             note(CodexIntegration.seenText)
+            let grok = GrokIntegration.installed
+            m.add("Grok Build hooks", checked: grok) { GrokIntegration.toggle(install: !grok) }
+            note(GrokIntegration.seenText)
             m.sep()
             m.sub("额度显示哪一家") { s in
-                for (id, label) in [("auto", "自动（最近在用的）"), ("claude", "Claude"), ("codex", "Codex")] {
+                for (id, label) in [("auto", "自动（最近在用的）")] + Pet.agents.map({ ($0, Pet.agentNames[$0]!) }) {
                     s.add(label, checked: Pet.quotaSource == id) { [weak self] in self?.set("quotaSource", id) }
                 }
             }
@@ -211,7 +238,7 @@ extension Pet {
     }
 }
 
-// ---------------- 接入 Claude Code 插件（Codex 的在 Codex.swift） ----------------
+// ---------------- 接入 Claude Code 插件（Codex、Grok 的在 Codex.swift、Grok.swift） ----------------
 /// 把程序里的 plugin 文件夹加进 ~/.claude/settings.json 的 env.CLAUDE_CODE_PLUGIN_DIRS（多个目录用 : 隔开，别人的照留）。
 /// 改之前先备份成 settings.json.bak-claudia-<时间>，只留最近 3 份。新开的 Claude Code 会话生效。
 enum Integration {

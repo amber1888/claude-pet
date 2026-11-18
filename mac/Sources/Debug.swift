@@ -23,6 +23,27 @@ extension Pet {
                 try? "look=\(self.cid) looks=\(self.looks.map { "\($0.id):\($0.label)" })\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
                 return
             }
+            if code.hasPrefix("#mail") {   // #mail check / #mail status：邮件提醒自检（结果写到 out.txt）
+                Task { @MainActor in
+                    let mc = MailCenter.shared
+                    if code.contains("check") { mc.checkAll() }
+                    if code.contains("keychain") {   // 钥匙串存、取、删一遍
+                        let k = "selftest@claudia-pet.local"
+                        let err = MailKeychain.set(k, "pw-123"); let got = MailKeychain.get(k); MailKeychain.remove(k)
+                        try? "keychain setErr=\(err ?? "none") get=\(got ?? "nil") afterRemove=\(MailKeychain.get(k) ?? "nil")\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                        return
+                    }
+                    let text = mc.watchers.map { "\($0.account.email): \($0.status) \($0.unread.map { "\($0.from)|\($0.subject)" })" }.joined(separator: "\n")
+                    try? "\(text)\nsummary=\(Store.json(mc.summary))\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                }
+                return
+            }
+            if code.hasPrefix("#grok ") {   // #grok install / #grok uninstall
+                let install = code.contains("uninstall") == false
+                let text = (try? GrokIntegration.set(install: install)) ?? "失败"
+                try? "\(text)\ninstalled=\(GrokIntegration.installed)\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                return
+            }
             if code.hasPrefix("#codex ") {   // #codex install / #codex uninstall：不弹窗，结果写到 out.txt
                 let install = code.contains("uninstall") == false
                 let text = (try? CodexIntegration.set(install: install)) ?? "失败"
