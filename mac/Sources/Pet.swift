@@ -19,6 +19,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
     private var timers: [Timer] = []
     private(set) var userHidden = false
     private var quitting = false
+    lazy var perch = Perch(pet: self)
 
     override init() {
         let s = CGFloat(Pet.scale)
@@ -54,6 +55,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         Hotkey.shared.onPress = { [weak self] in self?.toggleHidden() }
         applyHotkey()
         startMail()
+        perch.start()
         timers.append(every(0.3) { [weak self] in self?.poll() })
         timers.append(every(1.0 / 30) { [weak self] in self?.updatePassThrough() })
         let ws = NSWorkspace.shared.notificationCenter
@@ -100,6 +102,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
             self.updatePageHidden()
             self.poll()
             self.pushMail()
+            self.measureFeet()
             if Store.defaults.string(forKey: "lastVersion") != Store.version {
                 Store.defaults.set(Store.version, forKey: "lastVersion")
             }
@@ -146,13 +149,29 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
             self.web.pageZoom = CGFloat(s)
             self.window.setFrame(NSRect(origin: origin, size: size), display: true)
             self.keepOnScreen()
+            self.measureFeet()
+        }
+    }
+
+    /// 脚底中心在窗口里的位置交给 Perch（站在输入框上时按它对齐）
+    func measureFeet() {
+        web.evaluateJavaScript("perchFeet()") { [weak self] r, _ in
+            guard let self, let str = r as? String, let d = str.data(using: .utf8),
+                  let a = (try? JSONSerialization.jsonObject(with: d)) as? [Double], a.count == 2 else { return }
+            let z = Double(self.web.pageZoom)
+            self.perch.setFeet(x: a[0] * z, y: a[1] * z)
         }
     }
 
     // ---------------- 位置 ----------------
     private var top: CGFloat { NSScreen.screens.first?.frame.maxY ?? 0 }
     private func webPos() -> (x: Double, y: Double) { (Double(window.frame.minX), Double(top - window.frame.maxY)) }
-    private func moveTo(x: Double, y: Double) {
+    var webOrigin: CGPoint { let p = webPos(); return CGPoint(x: p.x, y: p.y) }
+    func screenRect(_ s: NSScreen) -> CGRect { CGRect(x: s.frame.minX, y: top - s.frame.maxY, width: s.frame.width, height: s.frame.height) }
+    var busyWithMouse: Bool { pressed || dragging || flying }
+    var walkingNow: Bool { walkTimer != nil }
+    func stopWalkNow() { stopWalk("done") }
+    func moveTo(x: Double, y: Double) {
         let o = NSPoint(x: CGFloat(x), y: top - CGFloat(y) - window.frame.height)
         if o != window.frame.origin { window.setFrameOrigin(o) }
     }
@@ -161,7 +180,8 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         return NSScreen.screens.first { $0.frame.contains(c) } ?? window.screen ?? NSScreen.main
     }
     /// 活动范围（网页坐标）：所在显示器的可用区域（不含菜单栏、程序坞），整个窗口都要在里面
-    private func area() -> [String: Double]? {
+    private func area(perched: Bool = true) -> [String: Double]? {
+        if perched, !dragging, !flying, let band = perch.walkBand() { return band }   // 站在输入框上：只沿着输入框走
         guard let vf = screenOfPet()?.visibleFrame else { return nil }
         let w = window.frame.width, h = window.frame.height
         let minX = Double(vf.minX), minY = Double(top - vf.maxY)
@@ -169,6 +189,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
                 "maxX": max(minX, Double(vf.maxX - w)), "maxY": max(minY, Double(top - vf.minY - h))]
     }
     func savePosition() {
+        if perch.active { return }   // 站在输入框上不算挪窝：记着的还是原来的位置，切走时跳回去
         let p = webPos()
         Store.defaults.set(p.x, forKey: "posX"); Store.defaults.set(p.y, forKey: "posY")
     }
@@ -181,13 +202,13 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
     }
     /// 回到默认位置：主屏右下角
     func recenter() {
-        stopMotion(save: false); stopWalk(nil)
+        stopMotion(save: false); stopWalk(nil); perch.reset()
         guard let vf = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame else { return }
         window.setFrameOrigin(NSPoint(x: vf.maxX - window.frame.width - 40, y: vf.minY))
         savePosition()
     }
     private func keepOnScreen() {
-        guard !dragging, !flying, let a = area() else { return }
+        guard !dragging, !flying, !perch.active, let a = area() else { return }
         let p = webPos()
         let x = min(a["maxX"]!, max(a["minX"]!, p.x)), y = min(a["maxY"]!, max(a["minY"]!, p.y))
         if x != p.x || y != p.y { moveTo(x: x, y: y) }
@@ -229,6 +250,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
     func petMouseDown(_ e: NSEvent) { mouseDown() }
     func petMouseDragged(_ e: NSEvent) { mouseDragged(at: e.timestamp) }
     func mouseDown() {
+        perch.cancelHop()
         stopMotion()
         down = pointer(); pressed = true
     }
@@ -263,7 +285,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
          "throwPower": Store.number("throwPower", 1.0, 0.2, 2.5), "ceilingBounce": Store.flag("ceilingBounce"), "petCollision": false]
     }
     private func motionPacket() -> [String: Any]? {
-        guard let b = area() else { return nil }
+        guard let b = area(perched: false) else { return nil }
         return ["id": motionId, "bounds": b, "physics": physicsConfig, "enabled": Store.flag("physicsEnabled")]
     }
     private func beginDrag(at time: TimeInterval) {
@@ -290,7 +312,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         let moved = dragging || flying
         motionId += 1; dragging = false; flying = false; lastMotionPos = nil
         if moved { js("petMotion.stop(); setMotionActive(false)") }
-        if moved && save { savePosition() }
+        if moved && save { perch.dropped(); savePosition() }
     }
     private func acceptMotion(_ m: [String: Any]) {
         guard (m["id"] as? Int) == motionId, dragging || flying, let phase = m["phase"] as? String else { return }
@@ -383,6 +405,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
         for st in states.sorted(by: { $0.at < $1.at }) {   // 同一次读到几家时，新的后演
             lastState = st.value
             js("applyCharState(\(Pet.q(cid)), \(Store.json(st.value)))")
+            perch.event(st.value)
             if st.agent != lastActiveAgent { lastActiveAgent = st.agent; quotaChanged = true }
         }
         if sessionsChanged {

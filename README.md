@@ -27,6 +27,7 @@ Claude 大小姐 **claudia** 的 macOS 桌宠：待在桌面上，跟着 Claude 
 - **跟着 Claude Code / Codex / Grok 干活**：你发消息时听你说，之后思考、看书（读文件 / 搜索）、写东西（改文件）、敲命令、查资料（上网）、派活（子代理）、整理记忆（压缩上下文）、有事问你（等授权或回答）；完成时开心（工具用得多时得意），出错哎呀，被打断吃惊。好几个会话同时干活时身边会出现每个会话的小卡片。
 - **换形象**：「外观 → 形象」里换衣服，冒一下烟换上，手上的活、额度接着显示。自带默认、「圣女」「睡衣」（来自 CrossPet；睡衣只有 5 张图，干活时多半是待机的样子）和「茶会大小姐」（来自 [克劳德大小姐 · Claude-girl](https://github.com/wangxianda941030/Claude-girl)，整套都是动画：托腮思考、敲小键盘、翻书、双手合十等你、捧茶、想太久冒烟……），也可以自己加（见下）。
 - **显示额度**：名牌下面显示 5 小时 / 每周已用额度，可选文字或额度条。
+- **站在输入框上**：你在终端里给 Claude（Codex、Grok 也算）发消息，她就跳到那个终端窗口的输入框上陪着你，窗口挪她跟着挪。你发消息她原地一跳；干活时隔一会儿沿着输入框蹦到另一处；等你授权 / 回答时连蹦两下，没理她过几秒再蹦；完成高高一跳（干了一大票连跳两下）；出错往后一个趔趄。切到别的程序她跳回原来的位置；把她从输入框上拖走，下次发消息前不再跳回去。默认按 Claude Code 的布局估输入框在窗口底边往上 58 点，对不上就**把她拖到输入框上放下**，她会记住这种终端的输入框在哪。只读窗口位置，不要辅助功能、屏幕录制权限。「互动 → 站在 Claude Code 输入框上」可以关掉。
 - **邮件提醒**：直接连你的邮箱（IMAP），每分钟看一次收件箱。重要的新邮件用一个信纸样式的气泡念出发件人和主题，名牌旁边的小胶囊「✉ 4 · 王总」一直显示未读数和最新的重要发件人；点胶囊或气泡打开 Foxmail（没装就开网页邮箱）。见下面「邮件提醒」。
 - **任务通知**：一轮完成或出错、等你授权或回答时发系统通知（可设成只在终端 / Claude 不在前台时通知）。
 - **会被摸、会生气**：单击摸头；按住来回晃会不耐烦、鼓脸、红温、赌气，要摸头哄回来。
@@ -106,7 +107,7 @@ looks/            用别人的图拼出来的形象：怎么拼（poses.txt）�
 upstream/         上游的许可、来源说明和固定的提交号
 ```
 
-开发自检：设置 `CLAUDIA_DEBUG_DIR=<目录>` 直接运行 `dist/claudia-pet.app/Contents/MacOS/claudia-pet`，往 `<目录>/cmd.js` 写一段脚本就会在网页里执行，结果写到 `out.txt`、画面截到 `snap.png`；写 `#throw` 模拟一次抛掷，写 `#codex install` / `#codex uninstall`（`#grok …` 同理）不弹窗地接入 / 撤销 Codex / Grok，写 `#look <形象 id>` / `#look rescan` 换形象 / 重新扫描，写 `#mail status` / `#mail check` / `#mail keychain` 看邮件提醒的状态、立刻检查、自检钥匙串（调试时可以用 `CLAUDIA_MAIL_TEST_PASSWORD` 代替钥匙串里的授权码）。模拟 Codex 事件：`echo '{"session_id":"s","hook_event_name":"UserPromptSubmit"}' | CLAUDIA_STATE_DIR=<目录> dist/claudia-pet.app/Contents/MacOS/claudia-pet --hook codex`（`--hook grok` 同理）。
+开发自检：设置 `CLAUDIA_DEBUG_DIR=<目录>` 直接运行 `dist/claudia-pet.app/Contents/MacOS/claudia-pet`，往 `<目录>/cmd.js` 写一段脚本就会在网页里执行，结果写到 `out.txt`、画面截到 `snap.png`；写 `#throw` 模拟一次抛掷，写 `#codex install` / `#codex uninstall`（`#grok …` 同理）不弹窗地接入 / 撤销 Codex / Grok，写 `#perch fake <x> <y> <宽> <高>` / `#perch off` / `#perch status` 假装终端窗口在那（锁屏时测「站在输入框上」），写 `#look <形象 id>` / `#look rescan` 换形象 / 重新扫描，写 `#mail status` / `#mail check` / `#mail keychain` 看邮件提醒的状态、立刻检查、自检钥匙串（调试时可以用 `CLAUDIA_MAIL_TEST_PASSWORD` 代替钥匙串里的授权码）。模拟 Codex 事件：`echo '{"session_id":"s","hook_event_name":"UserPromptSubmit"}' | CLAUDIA_STATE_DIR=<目录> dist/claudia-pet.app/Contents/MacOS/claudia-pet --hook codex`（`--hook grok` 同理）。
 
 ## 授权
 

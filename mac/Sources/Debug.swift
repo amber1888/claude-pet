@@ -38,6 +38,15 @@ extension Pet {
                 }
                 return
             }
+            if code.hasPrefix("#perch") {   // #perch fake x y w h：假装终端窗口在这（锁屏时测）；#perch off；#perch status
+                let a = code.split(separator: " ").dropFirst().map(String.init)
+                if a.first == "fake", a.count == 5, let v = Optional(a[1...].compactMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }), v.count == 4 {
+                    self.perch.debugRect = CGRect(x: v[0], y: v[1], width: v[2], height: v[3])
+                } else if a.first?.hasPrefix("off") == true { self.perch.debugRect = nil }
+                let o = self.webOrigin
+                try? "\(self.perch.debugStatus) origin=\(o.x),\(o.y)\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
+                return
+            }
             if code.hasPrefix("#grok ") {   // #grok install / #grok uninstall
                 let install = code.contains("uninstall") == false
                 let text = (try? GrokIntegration.set(install: install)) ?? "失败"

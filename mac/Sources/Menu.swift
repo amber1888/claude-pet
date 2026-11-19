@@ -131,6 +131,7 @@ extension Pet {
                     s.add(label, checked: cur == id) { [weak self] in self?.set("idleFrequency", id) }
                 }
             }
+            m.add("站在 Claude Code 输入框上", checked: Perch.enabled) { [weak self] in self?.set("perchEnabled", !Perch.enabled) }
             m.sep()
             m.add("点击 Q 弹", checked: Store.flag("clickBounce")) { [weak self] in self?.set("clickBounce", !Store.flag("clickBounce")) }
             m.add("碰边动作（撞头、摔倒）", checked: Store.flag("tumbleActions")) { [weak self] in self?.set("tumbleActions", !Store.flag("tumbleActions")) }
