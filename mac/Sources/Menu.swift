@@ -81,6 +81,7 @@ extension Pet {
         if userHidden { menu.add("叫她出来") { [weak self] in self?.setUserHidden(false) }; menu.sep() }
         menu.add("摸摸头") { [weak self] in self?.js("handleClick('pat')") }
         menu.add("戳一下") { [weak self] in self?.js("handleClick('poke')") }
+        if perch.active { menu.add(perch.level == .top ? "跳到输入框下面" : "跳上输入框") { [weak self] in self?.perch.switchLevel() } }
         let have = actionPoses
         if !have.isEmpty {
             menu.sub("动作") { root in
