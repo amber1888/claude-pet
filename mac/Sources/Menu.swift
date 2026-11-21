@@ -133,6 +133,7 @@ extension Pet {
                 }
             }
             m.add("站在 Claude Code 输入框上", checked: Perch.enabled) { [weak self] in self?.set("perchEnabled", !Perch.enabled) }
+            m.add("精确对准输入框（要屏幕录制权限）", checked: Perch.precise) { [weak self] in self?.togglePrecisePerch() }
             m.sep()
             m.add("点击 Q 弹", checked: Store.flag("clickBounce")) { [weak self] in self?.set("clickBounce", !Store.flag("clickBounce")) }
             m.add("碰边动作（撞头、摔倒）", checked: Store.flag("tumbleActions")) { [weak self] in self?.set("tumbleActions", !Store.flag("tumbleActions")) }
@@ -324,6 +325,28 @@ enum LoginItem {
             let a = NSAlert(); a.messageText = "设置登录启动失败"
             a.informativeText = "\(error.localizedDescription)\n\n可以在「系统设置 → 通用 → 登录项」里手动添加 \(Store.appName)。"
             a.runModal()
+        }
+    }
+}
+
+extension Pet {
+    /// 「精确对准输入框」：开着而且有权限 → 关；否则打开，没权限就请系统弹授权（要在系统设置里勾上、再重开桌宠）
+    func togglePrecisePerch() {
+        if Perch.precise { set("perchPrecise", false); return }
+        set("perchPrecise", true)
+        guard !InputBox.allowed else { return }
+        InputBox.request()
+        let a = NSAlert()
+        a.messageText = "要「屏幕录制」权限"
+        a.informativeText = "她会截你正在用的那个终端窗口（只截那一个窗口、不保存、不上传），找 Claude Code 输入框的那两条横线，好准准地站上去。\n\n"
+            + "请到「系统设置 → 隐私与安全性 → 屏幕与系统录音」里打开 claudia-pet，然后从菜单退出、再重新打开她。\n"
+            + "（每次重新安装后 macOS 可能要你重新勾一次。）没给权限时她按窗口底边估位置，对不上可以把她拖到输入框上放一次。"
+        a.addButton(withTitle: "打开系统设置")
+        a.addButton(withTitle: "好")
+        NSApp.activate(ignoringOtherApps: true)
+        if a.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
         }
     }
 }

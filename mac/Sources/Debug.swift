@@ -39,10 +39,14 @@ extension Pet {
                 return
             }
             if code.hasPrefix("#perch") {   // #perch fake x y w h：假装终端窗口在这（锁屏时测）；#perch off；#perch status
-                let a = code.split(separator: " ").dropFirst().map(String.init)
+                let a = code.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: " ").dropFirst().map(String.init)
                 if a.first == "fake", a.count == 5, let v = Optional(a[1...].compactMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }), v.count == 4 {
                     self.perch.debugRect = CGRect(x: v[0], y: v[1], width: v[2], height: v[3])
-                } else if a.first?.hasPrefix("off") == true { self.perch.debugRect = nil }
+                } else if a.first?.hasPrefix("off") == true { self.perch.debugRect = nil
+                } else if a.first == "box", a.count == 5 {   // #perch box 上 下 左 右：假装截图找到的输入框
+                    let v = a[1...].compactMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+                    if v.count == 4 { self.perch.debugSetBox(InputBox.Found(top: v[0], bottom: v[1], left: v[2], right: v[3])) }
+                } else if a.first == "nobox" { self.perch.debugSetBox(nil) }
                 let o = self.webOrigin
                 try? "\(self.perch.debugStatus) origin=\(o.x),\(o.y)\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
                 return
