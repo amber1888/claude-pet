@@ -46,7 +46,13 @@ extension Pet {
                 } else if a.first == "box", a.count == 5 {   // #perch box 上 下 左 右：假装截图找到的输入框
                     let v = a[1...].compactMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
                     if v.count == 4 { self.perch.debugSetBox(InputBox.Found(top: v[0], bottom: v[1], left: v[2], right: v[3])) }
-                } else if a.first == "nobox" { self.perch.debugSetBox(nil) }
+                } else if a.first == "nobox" { self.perch.debugSetBox(nil)
+                } else if a.first == "screens" {   // #perch screens x y w h [x y w h …]：假装有这几块屏幕；不带数字就取消
+                    let v = a.dropFirst().compactMap { Double($0) }
+                    self.perch.debugScreens = v.count >= 4 ? stride(from: 0, to: v.count - 3, by: 4).map { CGRect(x: v[$0], y: v[$0 + 1], width: v[$0 + 2], height: v[$0 + 3]) } : nil
+                } else if a.first == "drop", a.count == 3, let x = Double(a[1]), let y = Double(a[2]) {   // #perch drop x y：假装把她拖到这放下
+                    self.moveTo(x: x, y: y); self.perch.dropped(); self.savePosition()
+                }
                 let o = self.webOrigin
                 try? "\(self.perch.debugStatus) origin=\(o.x),\(o.y)\n".write(to: dir.appendingPathComponent("out.txt"), atomically: true, encoding: .utf8)
                 return

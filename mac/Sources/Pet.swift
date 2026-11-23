@@ -168,6 +168,7 @@ final class Pet: NSObject, PetMouse, WKScriptMessageHandler, WKNavigationDelegat
     private func webPos() -> (x: Double, y: Double) { (Double(window.frame.minX), Double(top - window.frame.maxY)) }
     var webOrigin: CGPoint { let p = webPos(); return CGPoint(x: p.x, y: p.y) }
     func screenRect(_ s: NSScreen) -> CGRect { CGRect(x: s.frame.minX, y: top - s.frame.maxY, width: s.frame.width, height: s.frame.height) }
+    func visibleRect(_ s: NSScreen) -> CGRect { let v = s.visibleFrame; return CGRect(x: v.minX, y: top - v.maxY, width: v.width, height: v.height) }
     var busyWithMouse: Bool { pressed || dragging || flying }
     var walkingNow: Bool { walkTimer != nil }
     func stopWalkNow() { stopWalk("done") }

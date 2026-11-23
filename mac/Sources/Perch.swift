@@ -8,8 +8,11 @@ import CoreGraphics
 ///   等你授权/回答 跳上输入框连着蹦两下，没理她就过几秒再蹦（提醒你）
 ///   完成          从下面高高跳上输入框；干了一大票（得意）上去后再跳一下
 ///   出错          往后一个小趔趄
-/// 右键菜单里也能叫她跳上去 / 跳下去。你切到别的程序，她跳回原来的位置；从输入框上拖走她，下次你发消息之前不再跳回去；
+/// 右键菜单里也能叫她跳上去 / 跳下去。终端被别的窗口盖住（同一块屏幕上切到别的程序），她跳回原来的位置；
+/// 你转去另一块屏幕干活，这边的终端还露着，她就接着站着不动。从输入框上拖走她，下次你发消息之前不再跳回去；
 /// 把她拖到输入框上（或者下面）放下，就记住这个终端里那一层在哪（每种终端各记一份）。
+/// 多块屏幕：她只待在自己那块屏幕上（原来的位置在哪块就是哪块），终端在别的屏幕上她不跳过去，免得你来回切屏时她满屏飞；
+/// 想让她去那边，把她拖过去（拖到那边终端的输入框上也行，以后切走时就回那块屏幕的右下角）。
 ///
 /// 怎么知道是哪个窗口：你发消息那一刻在最前面的程序的最前面的窗口（终端可能是 Terminal、iTerm、Ghostty、Orca、VS Code……，
 /// 进程树也不一定连得到——tmux、Orca 的终端都挂在后台进程下面，所以不按进程找）。
@@ -47,6 +50,7 @@ final class Perch {
     private var timer: Timer?
     var debugRect: CGRect? { didSet { if debugRect != nil { targetPid = 1; targetWin = 1; targetBundle = "debug"; suppressed = false } else { box = nil } } }
     func debugSetBox(_ b: InputBox.Found?) { box = b }   // 调试：假的终端窗口
+    var debugScreens: [CGRect]?                          // 调试：假装有这几块屏幕（网页坐标）
     var debugStatus: String { "active=\(active) hopping=\(hop != nil) suppressed=\(suppressed) target=\(targetBundle)#\(targetWin) rel=\(rel) level=\(level) wanted=\(wanted) box=\(box.map { "\($0)" } ?? "nil") top=\(offset(.top)) below=\(offset(.below)) feet=\(feet) win=\(lastWin.map { "\($0)" } ?? "nil") home=\(home.map { "\($0)" } ?? "nil")" }
 
     private struct Hop { var from, to: CGPoint; var t0: TimeInterval; var dur, height: Double; var then: (() -> Void)? }
@@ -115,7 +119,7 @@ final class Perch {
     private static func windows() -> [(pid: pid_t, id: CGWindowID, rect: CGRect)] {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else { return [] }
         return list.compactMap { w in
-            guard (w[kCGWindowLayer as String] as? Int) == 0, let pid = w[kCGWindowOwnerPID as String] as? Int,
+            guard (w[kCGWindowLayer as String] as? Int) == 0, let pid = w[kCGWindowOwnerPID as String] as? Int, pid != Int(getpid()),
                   let id = w[kCGWindowNumber as String] as? Int, (w[kCGWindowAlpha as String] as? Double ?? 1) > 0,
                   let b = w[kCGWindowBounds as String] as? [String: Any], let r = CGRect(dictionaryRepresentation: b as CFDictionary),
                   r.width >= 300, r.height >= 120 else { return nil }
@@ -123,15 +127,47 @@ final class Perch {
         }
     }
 
-    /// 该站在哪个窗口上：开着、没被拖走、最近 30 分钟有过动静、那个终端在最前面而且最前面的就是那个窗口
+    /// 该站在哪个窗口上：开着、没被拖走、最近 30 分钟有过动静、那个终端窗口在它那块屏幕上是最前面的（没被盖住；
+    /// 你在另一块屏幕上用别的程序也算），而且就在她自己那块屏幕上
     private func perchWindow() -> CGRect? {
         guard Perch.enabled, !suppressed, targetPid != 0,
               Date().timeIntervalSince(lastEvent) < 1800, let front = NSWorkspace.shared.frontmostApplication else { return nil }
-        if let r = debugRect { return r }
-        if front.processIdentifier == getpid() { return active ? lastWin : nil }   // 点了她的菜单、对话框：不动
-        guard front.processIdentifier == targetPid,
-              let w = Perch.windows().first(where: { $0.pid == targetPid }), w.id == targetWin else { return nil }
-        return w.rect
+        let r: CGRect
+        if let d = debugRect { r = d } else {
+            if front.processIdentifier == getpid() { return active ? lastWin : nil }   // 点了她的菜单、对话框：不动
+            let all = Perch.windows()
+            guard let w = all.first(where: { $0.id == targetWin }) else { return nil }
+            let here = display(of: w.rect)?.frame
+            guard all.first(where: { display(of: $0.rect)?.frame == here })?.id == targetWin else { return nil }
+            r = w.rect
+        }
+        guard let mine = herDisplay(), display(of: r)?.frame == mine.frame else { return nil }   // 终端在别的屏幕上：不过去
+        return r
+    }
+
+    // ---------------- 屏幕 ----------------
+    /// 各块屏幕（网页坐标）：整块、去掉菜单栏和程序坞的可用区域
+    private func displays() -> [(frame: CGRect, visible: CGRect)] {
+        if let d = debugScreens { return d.map { ($0, $0) } }
+        return NSScreen.screens.map { (pet.screenRect($0), pet.visibleRect($0)) }
+    }
+    /// 这块地方主要在哪块屏幕上（交叠最多的那块）
+    private func display(of r: CGRect) -> (frame: CGRect, visible: CGRect)? {
+        func area(_ d: (frame: CGRect, visible: CGRect)) -> CGFloat { let i = d.frame.intersection(r); return i.isNull ? 0 : i.width * i.height }
+        return displays().filter { area($0) > 0 }.max { area($0) < area($1) }
+    }
+    /// 桌宠窗口在 o 时她身子占的地方（窗口四周是透明的，按脚底往上一截算）
+    private func body(at o: CGPoint) -> CGRect { CGRect(x: o.x + feet.x - 40, y: o.y + feet.y - 120, width: 80, height: 120) }
+    /// 她自己那块屏幕：站着时按原来的位置算，没站着就是现在在的那块
+    private func herDisplay() -> (frame: CGRect, visible: CGRect)? { display(of: body(at: (active ? home : nil) ?? pet.webOrigin)) }
+    /// 拖她站到终端上：记下切走时回哪。原来的位置不在这块屏幕上（从别的屏幕拖过来的），这块屏幕就归她了，回这块屏幕的右下角
+    private func settleHome(on w: CGRect) {
+        let h = home ?? CGPoint(x: Store.defaults.double(forKey: "posX"), y: Store.defaults.double(forKey: "posY"))
+        guard let d = display(of: w), display(of: body(at: h))?.frame != d.frame else { home = h; return }
+        let size = pet.window.frame.size
+        let c = CGPoint(x: (d.visible.maxX - size.width - 40).rounded(), y: (d.visible.maxY - size.height).rounded())
+        home = c
+        Store.defaults.set(Double(c.x), forKey: "posX"); Store.defaults.set(Double(c.y), forKey: "posY")
     }
 
     // ---------------- 位置 ----------------
@@ -318,7 +354,7 @@ final class Perch {
             if fx > l.left - 40, fx < l.right + 40, fy > top - 120, fy < Double(w.maxY) + 10 {
                 level = abs(fy - top) <= abs(fy - below) ? .top : .below
                 holdUntil = Date().addingTimeInterval(20)
-                if !active { home = home ?? CGPoint(x: Store.defaults.double(forKey: "posX"), y: Store.defaults.double(forKey: "posY")) }
+                settleHome(on: w)
                 active = true; suppressed = false; lastWin = w; lastEvent = Date()
                 rel = fx - l.right
             } else {
@@ -332,7 +368,7 @@ final class Perch {
             // 放得比上面一层的一半还高算上面（输入框上），否则算下面（窗口底边那一带）
             let l: Level = fromBottom >= max(20, offset(.top) * 0.6) ? .top : .below
             remember(l, fromBottom); level = l; holdUntil = Date().addingTimeInterval(20)
-            if !active { home = home ?? CGPoint(x: Store.defaults.double(forKey: "posX"), y: Store.defaults.double(forKey: "posY")) }
+            settleHome(on: w)
             active = true; suppressed = false; lastWin = w; lastEvent = Date()
             rel = fx - Double(w.maxX)
             pet.js("perchSay('learned')")
