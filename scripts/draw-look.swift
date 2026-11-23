@@ -4,6 +4,7 @@
 // 用法（平时不用直接跑，scripts/draw-looks.sh 会编译它、画好所有这类形象）：
 //   swift scripts/draw-look.swift <rig.js> <形象 id> <输出文件夹>          整套：立绘、精灵图、frames.json（每张精灵图几帧）
 //   swift scripts/draw-look.swift <rig.js> <形象 id> <输出.png> --preview  一张总览（所有姿态排一排），看画得怎么样
+//   swift scripts/draw-look.swift <rig.js> <形象 id> <输出.png> --closeup [姿态,姿态…]  几个姿态按立绘的大小并排，看细节
 //
 // rig.js 要定义全局 RIG：
 //   RIG.jobs(id)  → [{kind: 'still', name, pose}, {kind: 'sheet', name, pose, frames}]
@@ -18,7 +19,12 @@ func fail(_ s: String) -> Never { FileHandle.standardError.write((s + "\n").data
 
 var args = Array(CommandLine.arguments.dropFirst())
 let preview = args.contains("--preview"); args.removeAll { $0 == "--preview" }
-guard args.count == 3 else { fail("用法：swift scripts/draw-look.swift <rig.js> <形象 id> <输出文件夹 | 输出.png --preview>") }
+var closeup: String? = nil
+if let i = args.firstIndex(of: "--closeup") {
+    args.remove(at: i)
+    closeup = i < args.count && !args[i].hasSuffix(".png") && !args[i].hasSuffix(".js") && args.count > 3 ? args.remove(at: i) : "idle,happy,proud,thinking"
+}
+guard args.count == 3 else { fail("用法：swift scripts/draw-look.swift <rig.js> <形象 id> <输出文件夹 | 输出.png --preview | 输出.png --closeup [姿态,…]>") }
 let rigURL = URL(fileURLWithPath: args[0]), lookId = args[1], out = URL(fileURLWithPath: args[2])
 guard let rig = try? String(contentsOf: rigURL, encoding: .utf8) else { fail("读不到 \(rigURL.path)") }
 
@@ -72,6 +78,14 @@ async function sheet(id, pose, frames) {
     await raster(RIG.svg(id, pose, i / frames, v), SHEET.w, SHEET.h, ctx, (i % SHEET.cols) * SHEET.w, Math.floor(i / SHEET.cols) * SHEET.h)
   return png(cv)
 }
+// 特写：几个姿态按立绘大小并排，白底
+async function closeup(id, poses) {
+  const b = await measure(id), v = viewFor(b, STILL.w, STILL.h, STILL.charH, STILL.w / 2, STILL.h - 1)
+  const cv = new OffscreenCanvas(STILL.w * poses.length, STILL.h), ctx = cv.getContext('2d')
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, cv.width, cv.height)
+  for (let i = 0; i < poses.length; i++) await raster(RIG.svg(id, poses[i], 0, v), STILL.w, STILL.h, ctx, i * STILL.w, 0)
+  return png(cv)
+}
 // 总览：每个立绘缩小排成几行，白底，方便一眼看完
 async function overview(id) {
   const poses = RIG.jobs(id).filter(j => j.kind === 'still').map(j => j.pose)
@@ -89,8 +103,10 @@ async function overview(id) {
 
 final class Runner: NSObject, WKNavigationDelegate {
     let web = WKWebView(frame: NSRect(x: 0, y: 0, width: 200, height: 200))
-    let rig: String, lookId: String, out: URL, preview: Bool
-    init(rig: String, lookId: String, out: URL, preview: Bool) { self.rig = rig; self.lookId = lookId; self.out = out; self.preview = preview }
+    let rig: String, lookId: String, out: URL, preview: Bool, closeup: String?
+    init(rig: String, lookId: String, out: URL, preview: Bool, closeup: String?) {
+        self.rig = rig; self.lookId = lookId; self.out = out; self.preview = preview; self.closeup = closeup
+    }
     func start() {
         web.navigationDelegate = self
         web.loadHTMLString("<!doctype html><meta charset=utf-8><script>\(rig)\n\(harness)</script>", baseURL: nil)
@@ -123,6 +139,11 @@ final class Runner: NSObject, WKNavigationDelegate {
 
     @MainActor func run() async {
         let id = js(lookId)
+        if let c = closeup {
+            let list = c.split(separator: ",").map { js(String($0)) }.joined(separator: ",")
+            save(await call("return await closeup(\(id), [\(list)])"), out, quality: 0)
+            print("特写：\(out.path)"); return
+        }
         if preview {
             save(await call("return await overview(\(id))"), out, quality: 0)
             print("总览：\(out.path)"); return
@@ -150,6 +171,6 @@ final class Runner: NSObject, WKNavigationDelegate {
 
 let app = NSApplication.shared
 app.setActivationPolicy(.prohibited)
-let runner = Runner(rig: rig, lookId: lookId, out: out, preview: preview)
+let runner = Runner(rig: rig, lookId: lookId, out: out, preview: preview, closeup: closeup)
 runner.start()
 app.run()

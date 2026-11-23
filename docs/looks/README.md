@@ -2,7 +2,7 @@
 
 流程：**写衣服描述 → 先画待机图 → 照着待机图画其他姿态 → 跑对齐脚本 → 桌宠里重新扫描**。
 
-提示词在 [提示词.md](提示词.md)。做法沿用 claudia-pet 上游补图的方法（上游用 AI 生图工具按设计参考重画立绘，见其 `docs/prompts/`）。
+提示词在 [提示词.md](提示词.md)；三位大小姐（金卷 / 黑蔷薇 / 紫藤）的整套生图提示词在 [大小姐提示词.md](大小姐提示词.md)。做法沿用 claudia-pet 上游补图的方法（上游用 AI 生图工具按设计参考重画立绘，见其 `docs/prompts/`）。
 
 ## 1. 准备
 
@@ -116,8 +116,11 @@ python3 scripts/look-frames.py <你的 character.json> ~/.claudia/characters/<id
 ```bash
 swiftc -O scripts/draw-look.swift -o build/draw-look
 build/draw-look looks/drawn/rig.js ojou-gold /tmp/gold.png --preview   # 所有姿态排成一张图
+build/draw-look looks/drawn/rig.js ojou-gold /tmp/gold.png --closeup idle,happy   # 几个姿态按立绘大小并排，看脸和线条
 ./scripts/draw-looks.sh --force                                       # 重画全部
 ```
+
+代码画的是干净的 Q 版矢量风，比不上默认形象那种手绘质感；想要一样精致，照 [大小姐提示词.md](大小姐提示词.md) 用 AI 生图画一套。
 
 想加一位：在 `rig.js` 的 `DESIGNS` 里加一套（发型 `drills` / `hime` / `wavy`，颜色，裙子 `tiered` / `gothic` / `apron`，领子 `round` / `high` / `jabot`，招牌道具 `fan` / `parasol` / `teacup`），写一份 `looks/<id>/character.json`，再把 id 加进 `draw-looks.sh` 的 `LOOKS`。
 
