@@ -105,24 +105,14 @@ python3 scripts/look-frames.py <你的 character.json> ~/.claudia/characters/<id
 
 要 `brew install ffmpeg webp`。macOS 的网页引擎播这种 WebM 会丢透明通道（人物外面一个黑框），所以一定要转。
 
-## 用代码画
+## 随仓库的大小姐们
 
-自带的三位大小姐（金卷 / 黑蔷薇 / 紫藤）不是生图画的，是 `looks/drawn/rig.js` 用代码写的 SVG：一套 Q 版身体（头、蓬蓬裙、两节骨骼的胳膊）、一套表情（眼睛、眉毛、嘴）、一套道具（折扇、阳伞、茶杯、书、羽毛笔、放大镜、铃铛），每位大小姐只是换发型、配色、裙子、领子和招牌道具；姿态写「手放哪、什么表情、拿什么」，动画是姿态随时间 t 变化。
+三位大小姐（金卷 / 黑蔷薇 / 紫藤）是照 [大小姐提示词.md](大小姐提示词.md) 生图画的，原图放在仓库的 `looks/<id>-art/`（文件名就是姿态名），
+台词在 `looks/<id>/character.json`。`./scripts/build.sh` 会调用 `scripts/art-looks.sh`：用 `prepare-look.swift` 对齐、缩放、转 WebP，
+没画的姿态复制意思相近的一张顶上（脚本里的 `EXTRA`），输出到 `characters/<id>/`；原图、台词没改就不重做。
 
-`./scripts/build.sh` 会调用 `scripts/draw-looks.sh`，它用 `scripts/draw-look.swift`（macOS 自带的 WebKit）把每个姿态渲染成立绘和精灵图，再放上 `looks/<id>/character.json`（台词、姿态对应哪张精灵图），输出到 `characters/<id>/`；画法、台词没改就不重画。
-
-改画法时先看总览：
-
-```bash
-swiftc -O scripts/draw-look.swift -o build/draw-look
-build/draw-look looks/drawn/rig.js ojou-gold /tmp/gold.png --preview   # 所有姿态排成一张图
-build/draw-look looks/drawn/rig.js ojou-gold /tmp/gold.png --closeup idle,happy   # 几个姿态按立绘大小并排，看脸和线条
-./scripts/draw-looks.sh --force                                       # 重画全部
-```
-
-代码画的是干净的 Q 版矢量风，比不上默认形象那种手绘质感；想要一样精致，照 [大小姐提示词.md](大小姐提示词.md) 用 AI 生图画一套。
-
-想加一位：在 `rig.js` 的 `DESIGNS` 里加一套（发型 `drills` / `hime` / `wavy`，颜色，裙子 `tiered` / `gothic` / `apron`，领子 `round` / `high` / `jabot`，招牌道具 `fan` / `parasol` / `teacup`），写一份 `looks/<id>/character.json`，再把 id 加进 `draw-looks.sh` 的 `LOOKS`。
+给她们补姿态：把新图（比如 `proud.png`、`sleeping.png`）放进对应的 `looks/<id>-art/`，重新 `./scripts/build.sh`，画了的就不再用替身。
+加一位：原图放进 `looks/<新 id>-art/`，写一份 `looks/<新 id>/character.json`，再把 id 加进 `art-looks.sh` 的 `LOOKS`。
 
 ## 授权
 
