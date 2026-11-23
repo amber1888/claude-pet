@@ -7,6 +7,7 @@
 | 内容 | 来源 | 授权 |
 |---|---|---|
 | `mac/`（Swift 外壳）、`scripts/`、`docs/looks/`、`looks/` | 本项目新写，参照 claudia-pet 的 C# 外壳逻辑 | 见仓库 [LICENSE](LICENSE) |
+| 金卷 / 黑蔷薇 / 紫藤三位大小姐形象（`looks/drawn/rig.js` 的画法，以及 build 时渲染出的 `characters/ojou-*/`） | 本项目原创，用代码画的 SVG | 见仓库 [LICENSE](LICENSE) |
 | `web/`（网页画面：动画、物理、台词、情绪） | 原样取自 claudia-pet（提交见 `upstream/claudia-pet-COMMIT`），它基于 [CrossPet](https://github.com/lokicorvus/crosspet)（lokicorvus），`web/dsh-physics.js` 摘录自 [dsh-pet](https://github.com/PC2005-cloud/dsh-pet)（PC2005-cloud） | MIT，许可全文见 `upstream/claudia-pet-LICENSE`、`upstream/CrossPet-LICENSE`，dsh-pet 的 MIT 许可见 `upstream/claudia-pet-NOTICE.md` 末尾 |
 | `plugin/hooks/register.ts`（Claude Code 插件） | 移植自 claudia-pet 的插件（改自 CrossPet 的 Claude Code mod），只改了 macOS 路径和拉起方式 | MIT |
 

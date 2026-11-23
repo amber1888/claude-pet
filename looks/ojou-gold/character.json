@@ -1,0 +1,312 @@
+{
+  "skinOf": "claude",
+  "skinName": "金卷大小姐",
+  "greeting": "哦～呵呵呵！本小姐来陪你了，还不快感激涕零？",
+  "accent": "#e2577a",
+  "animations": {
+    "idle": {
+      "sheets": [
+        "idle"
+      ],
+      "loop": true
+    },
+    "listening": {
+      "sheets": [
+        "listening"
+      ],
+      "loop": true
+    },
+    "thinking": {
+      "sheets": [
+        "thinking"
+      ],
+      "loop": true
+    },
+    "reading": {
+      "sheets": [
+        "reading"
+      ],
+      "loop": true
+    },
+    "writing": {
+      "sheets": [
+        "writing"
+      ],
+      "loop": true
+    },
+    "running": {
+      "sheets": [
+        "running"
+      ],
+      "loop": true
+    },
+    "asking": {
+      "sheets": [
+        "asking"
+      ],
+      "loop": true
+    },
+    "searching": {
+      "sheets": [
+        "searching"
+      ],
+      "loop": true
+    },
+    "delegating": {
+      "sheets": [
+        "delegating"
+      ],
+      "loop": true
+    },
+    "sleeping": {
+      "sheets": [
+        "sleeping"
+      ],
+      "loop": true
+    },
+    "tired": {
+      "sheets": [
+        "tired"
+      ],
+      "loop": true
+    },
+    "sorry": {
+      "sheets": [
+        "sorry"
+      ],
+      "loop": true
+    },
+    "compact": {
+      "sheets": [
+        "writing"
+      ],
+      "loop": true
+    },
+    "happy": {
+      "sheets": [
+        "happy"
+      ],
+      "full": true
+    },
+    "proud": {
+      "sheets": [
+        "proud"
+      ],
+      "full": true
+    },
+    "oops": {
+      "sheets": [
+        "oops"
+      ],
+      "full": true
+    },
+    "surprised": {
+      "sheets": [
+        "surprised"
+      ],
+      "full": true
+    },
+    "pat": {
+      "sheets": [
+        "pat"
+      ],
+      "full": true
+    },
+    "bye": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "hum": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "pout": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "annoyed": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "puffed": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "sulk": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "drag": {
+      "sheets": [
+        "oops"
+      ],
+      "loop": true,
+      "hidden": true
+    },
+    "greet_morning": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "greet_noon": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "greet_afternoon": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "greet_evening": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "greet_night": {
+      "sheets": [
+        "tired"
+      ],
+      "full": true
+    },
+    "laugh": {
+      "sheets": [
+        "proud"
+      ],
+      "full": true,
+      "idle": "claude"
+    }
+  },
+  "lines": {
+    "idle": [
+      "本小姐就在这儿，有事尽管吩咐～",
+      "哼哼，今天的卷发也很完美呢。",
+      "无聊……快给本小姐找点事做！",
+      "要不要喝杯红茶？当然是你来泡。"
+    ],
+    "listening": [
+      "说吧，本小姐洗耳恭听～",
+      "嗯嗯，继续～",
+      "交给本小姐！"
+    ],
+    "thinking": [
+      "区区小事，让本小姐想想……",
+      "嗯……这个嘛……",
+      "本小姐的头脑正在全速运转！"
+    ],
+    "reading": [
+      "本小姐来过目一下。",
+      "唔，字有点多呢……"
+    ],
+    "writing": [
+      "本小姐亲自执笔！",
+      "写得漂亮一点才配得上本小姐～"
+    ],
+    "running": [
+      "去吧！给本小姐跑起来！",
+      "执行！"
+    ],
+    "searching": [
+      "让本小姐找找看～",
+      "线索……线索在哪里……"
+    ],
+    "delegating": [
+      "来人呐～",
+      "仆人们，干活了！",
+      "这种小事就交给下面的人吧。"
+    ],
+    "asking": [
+      "这个……要你点头才行哦。",
+      "本、本小姐在等你决定呢！",
+      "快回答本小姐～"
+    ],
+    "happy": [
+      "哦～呵呵呵！完成啦！",
+      "看吧，本小姐出马就是不一样～",
+      "完美！"
+    ],
+    "proud": [
+      "哦～呵呵呵呵呵！",
+      "这么大的活，本小姐一下就搞定了！",
+      "尽情夸奖本小姐吧！"
+    ],
+    "oops": [
+      "怎、怎么会！",
+      "这、这不算！刚才不算！",
+      "呜……出错了……"
+    ],
+    "sorry": [
+      "……是本小姐搞错了。只此一次哦。",
+      "你说得对……本小姐这就改。"
+    ],
+    "surprised": [
+      "呀！吓到本小姐了！",
+      "什么？！"
+    ],
+    "pat": [
+      "哼……只、只许摸一下哦。",
+      "卷发会乱掉的啦……（脸红）",
+      "嘿嘿……"
+    ],
+    "pout": [
+      "哼！本小姐生气了！",
+      "不许戳本小姐！"
+    ],
+    "hum": [
+      "（扇扇子）今天有点热呢～",
+      "♪～哦～呵呵～"
+    ],
+    "tired": [
+      "本小姐……有点累了……",
+      "额度快见底了，省着点用哦。"
+    ],
+    "sleeping": [
+      "zZz……哦～呵呵……zZz",
+      "……呼……（梦到在开茶会）"
+    ],
+    "bye": [
+      "那本小姐先告退了～",
+      "下次见，可别太想本小姐哦！"
+    ],
+    "laugh": [
+      "哦～呵呵呵呵！",
+      "呵呵呵～本小姐今天也闪闪发光！"
+    ],
+    "greet_morning": [
+      "早安！本小姐今天也精神满满！",
+      "早上好～卷发已经做好了哦！"
+    ],
+    "greet_noon": [
+      "午餐时间！本小姐要吃最好的～",
+      "吃饱了才有力气干活哦。"
+    ],
+    "greet_afternoon": [
+      "下午茶时间到了～",
+      "要不要一起喝杯红茶？"
+    ],
+    "greet_evening": [
+      "今天辛苦了，本小姐允许你休息一下。",
+      "晚上好～"
+    ],
+    "greet_night": [
+      "这么晚了还不睡？本小姐都要困了……",
+      "熬夜对皮肤不好哦！"
+    ]
+  }
+}

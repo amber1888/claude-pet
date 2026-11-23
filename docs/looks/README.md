@@ -105,6 +105,22 @@ python3 scripts/look-frames.py <你的 character.json> ~/.claudia/characters/<id
 
 要 `brew install ffmpeg webp`。macOS 的网页引擎播这种 WebM 会丢透明通道（人物外面一个黑框），所以一定要转。
 
+## 用代码画
+
+自带的三位大小姐（金卷 / 黑蔷薇 / 紫藤）不是生图画的，是 `looks/drawn/rig.js` 用代码写的 SVG：一套 Q 版身体（头、蓬蓬裙、两节骨骼的胳膊）、一套表情（眼睛、眉毛、嘴）、一套道具（折扇、阳伞、茶杯、书、羽毛笔、放大镜、铃铛），每位大小姐只是换发型、配色、裙子、领子和招牌道具；姿态写「手放哪、什么表情、拿什么」，动画是姿态随时间 t 变化。
+
+`./scripts/build.sh` 会调用 `scripts/draw-looks.sh`，它用 `scripts/draw-look.swift`（macOS 自带的 WebKit）把每个姿态渲染成立绘和精灵图，再放上 `looks/<id>/character.json`（台词、姿态对应哪张精灵图），输出到 `characters/<id>/`；画法、台词没改就不重画。
+
+改画法时先看总览：
+
+```bash
+swiftc -O scripts/draw-look.swift -o build/draw-look
+build/draw-look looks/drawn/rig.js ojou-gold /tmp/gold.png --preview   # 所有姿态排成一张图
+./scripts/draw-looks.sh --force                                       # 重画全部
+```
+
+想加一位：在 `rig.js` 的 `DESIGNS` 里加一套（发型 `drills` / `hime` / `wavy`，颜色，裙子 `tiered` / `gothic` / `apron`，领子 `round` / `high` / `jabot`，招牌道具 `fan` / `parasol` / `teacup`），写一份 `looks/<id>/character.json`，再把 id 加进 `draw-looks.sh` 的 `LOOKS`。
+
 ## 授权
 
 照着 claudia 的设计画的衣服是她的衍生作品：默认形象按 CC BY-NC-SA 4.0 授权，所以新衣服也要**署名（CrossPet、claudia-pet 及原设定作者）、不得商用、按同一协议分享**。自己用不受影响。

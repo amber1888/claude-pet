@@ -9,6 +9,7 @@ APP="$ROOT/dist/claudia-pet.app"
 BUILD="$ROOT/build"
 
 [ -f characters/claude/character.json ] || ./scripts/fetch-assets.sh
+./scripts/draw-looks.sh   # 本项目原创的大小姐形象：画法改过才重画
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$BUILD"

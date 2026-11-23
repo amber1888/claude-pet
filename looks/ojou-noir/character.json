@@ -1,0 +1,311 @@
+{
+  "skinOf": "claude",
+  "skinName": "黑蔷薇大小姐",
+  "greeting": "……来了啊。别误会，我只是刚好有空。",
+  "accent": "#c02442",
+  "animations": {
+    "idle": {
+      "sheets": [
+        "idle"
+      ],
+      "loop": true
+    },
+    "listening": {
+      "sheets": [
+        "listening"
+      ],
+      "loop": true
+    },
+    "thinking": {
+      "sheets": [
+        "thinking"
+      ],
+      "loop": true
+    },
+    "reading": {
+      "sheets": [
+        "reading"
+      ],
+      "loop": true
+    },
+    "writing": {
+      "sheets": [
+        "writing"
+      ],
+      "loop": true
+    },
+    "running": {
+      "sheets": [
+        "running"
+      ],
+      "loop": true
+    },
+    "asking": {
+      "sheets": [
+        "asking"
+      ],
+      "loop": true
+    },
+    "searching": {
+      "sheets": [
+        "searching"
+      ],
+      "loop": true
+    },
+    "delegating": {
+      "sheets": [
+        "delegating"
+      ],
+      "loop": true
+    },
+    "sleeping": {
+      "sheets": [
+        "sleeping"
+      ],
+      "loop": true
+    },
+    "tired": {
+      "sheets": [
+        "tired"
+      ],
+      "loop": true
+    },
+    "sorry": {
+      "sheets": [
+        "sorry"
+      ],
+      "loop": true
+    },
+    "compact": {
+      "sheets": [
+        "writing"
+      ],
+      "loop": true
+    },
+    "happy": {
+      "sheets": [
+        "happy"
+      ],
+      "full": true
+    },
+    "proud": {
+      "sheets": [
+        "proud"
+      ],
+      "full": true
+    },
+    "oops": {
+      "sheets": [
+        "oops"
+      ],
+      "full": true
+    },
+    "surprised": {
+      "sheets": [
+        "surprised"
+      ],
+      "full": true
+    },
+    "pat": {
+      "sheets": [
+        "pat"
+      ],
+      "full": true
+    },
+    "bye": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "hum": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "pout": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "annoyed": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "puffed": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "sulk": {
+      "sheets": [
+        "pout"
+      ],
+      "full": true
+    },
+    "drag": {
+      "sheets": [
+        "oops"
+      ],
+      "loop": true,
+      "hidden": true
+    },
+    "greet_morning": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "greet_noon": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "greet_afternoon": {
+      "sheets": [
+        "hum"
+      ],
+      "full": true
+    },
+    "greet_evening": {
+      "sheets": [
+        "bye"
+      ],
+      "full": true
+    },
+    "greet_night": {
+      "sheets": [
+        "tired"
+      ],
+      "full": true
+    },
+    "laugh": {
+      "sheets": [
+        "proud"
+      ],
+      "full": true,
+      "idle": "claude"
+    }
+  },
+  "lines": {
+    "idle": [
+      "……",
+      "安静一点也不错。",
+      "有事就说。",
+      "（扶了扶帽子）"
+    ],
+    "listening": [
+      "……我在听。",
+      "嗯，说下去。",
+      "知道了。"
+    ],
+    "thinking": [
+      "……让我想想。",
+      "嗯……",
+      "答案就藏在暗处。"
+    ],
+    "reading": [
+      "……这本书还不错。",
+      "别打扰我看书。"
+    ],
+    "writing": [
+      "写好之前别偷看。",
+      "笔尖可不会说谎。"
+    ],
+    "running": [
+      "去。",
+      "按我说的做。",
+      "……执行。"
+    ],
+    "searching": [
+      "我去找找。",
+      "藏得再深也没用。"
+    ],
+    "delegating": [
+      "……来人。",
+      "交给她们去办吧。"
+    ],
+    "asking": [
+      "……要你来决定。",
+      "快点，我不喜欢等。",
+      "你、你点个头就好。"
+    ],
+    "happy": [
+      "……还算不错。",
+      "做完了。……嗯，夸我也可以。",
+      "哼，理所当然。"
+    ],
+    "proud": [
+      "呵……这种程度，不在话下。",
+      "……今晚可以稍微得意一下。"
+    ],
+    "oops": [
+      "……啧。",
+      "不是我的错……大概。",
+      "这、这只是意外。"
+    ],
+    "sorry": [
+      "……抱歉，是我错了。",
+      "你说得对。我改。"
+    ],
+    "surprised": [
+      "……！",
+      "别、别突然吓我。"
+    ],
+    "pat": [
+      "……只许一下。",
+      "帽、帽子会歪的……",
+      "……（没有躲开）"
+    ],
+    "pout": [
+      "哼。",
+      "……不理你了。",
+      "别戳了。"
+    ],
+    "hum": [
+      "红茶……还是要配黑蔷薇才好。",
+      "（轻轻抿一口）"
+    ],
+    "tired": [
+      "……额度快没了。",
+      "有点累……不过还撑得住。"
+    ],
+    "sleeping": [
+      "……zZ",
+      "（靠着阳伞睡着了）"
+    ],
+    "bye": [
+      "……下次见。",
+      "路上小心。……我才没有担心你。"
+    ],
+    "laugh": [
+      "呵呵……",
+      "……今晚的月色真美。"
+    ],
+    "greet_morning": [
+      "……早。今天也请多关照。",
+      "早安。……别盯着我看。"
+    ],
+    "greet_noon": [
+      "吃饭了吗？……随便问问。"
+    ],
+    "greet_afternoon": [
+      "下午茶的时间到了。",
+      "要喝红茶吗？我泡的。"
+    ],
+    "greet_evening": [
+      "夜晚……才是我的时间。",
+      "今天辛苦了。"
+    ],
+    "greet_night": [
+      "已经很晚了……快去睡。",
+      "深夜了。……我陪你一会儿。"
+    ]
+  }
+}
